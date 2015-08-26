@@ -1,3 +1,15 @@
+////////////////////////////////////////////////////////////////////////////////
+//            ________                                _____        __
+//           /  _____/_______ _____     ____   ____ _/ ____\__ __ |  |
+//          /   \  ___\_  __ \\__  \  _/ ___\_/ __ \\   __\|  |  \|  |
+//          \    \_\  \|  | \/ / __ \_\  \___\  ___/ |  |  |  |  /|  |__
+//           \______  /|__|   (____  / \___  >\___  >|__|  |____/ |____/
+//                  \/             \/      \/     \/
+// =============================================================================
+//           Designed & Developed by Brad Jones <brad @="bjc.id.au" />
+// =============================================================================
+////////////////////////////////////////////////////////////////////////////////
+
 namespace Graceful
 {
     using System;
@@ -946,7 +958,7 @@ namespace Graceful
                     this.OriginalPropertyBag = new Dictionary<string, object>();
                 }
 
-                if (TypeMapper.IsListOfEntities(value))
+                if (value != null && TypeMapper.IsListOfEntities(value))
                 {
                     var clone = (value as IEnumerable<object>)
                     .Cast<IModel<Model>>().ToList();

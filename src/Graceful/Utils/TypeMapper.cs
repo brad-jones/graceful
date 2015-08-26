@@ -42,6 +42,9 @@ namespace Graceful.Utils
                 }
             }
 
+            // Enums get special treatment, we simply store their integer value.
+            if (clrType.IsEnum) return SqlDbType.Int;
+
             switch (clrType.FullName)
             {
                 case "System.Int64":
