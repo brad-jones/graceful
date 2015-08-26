@@ -1,0 +1,118 @@
+{
+  "locked": false,
+  "version": -9996,
+  "targets": {
+    "DNX,Version=v4.5.1": {
+      "Inflector/1.0.0.0": {
+        "compile": {
+          "lib/net45/Inflector.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Inflector.dll": {}
+        }
+      },
+      "Newtonsoft.Json/7.0.1": {
+        "compile": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Newtonsoft.Json.dll": {}
+        }
+      },
+      "Newtonsoft.Json.Schema/1.0.10": {
+        "dependencies": {
+          "Newtonsoft.Json": "6.0.8"
+        },
+        "compile": {
+          "lib/net45/Newtonsoft.Json.Schema.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Newtonsoft.Json.Schema.dll": {}
+        }
+      },
+      "System.Linq.Dynamic/1.0.4": {
+        "compile": {
+          "lib/net40/System.Linq.Dynamic.dll": {}
+        },
+        "runtime": {
+          "lib/net40/System.Linq.Dynamic.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Inflector/1.0.0.0": {
+      "sha512": "sTHSvP1KMbAM2jTjqo02zn4nkMd3Mfj76H9Ikyko9bmO6BHblkIQOKIwJwQSKurgpiczBlcirWnbFM/n/8XiiQ==",
+      "files": [
+        "Inflector.1.0.0.0.nupkg",
+        "Inflector.1.0.0.0.nupkg.sha512",
+        "Inflector.nuspec",
+        "lib/net35/Inflector.dll",
+        "lib/net40/Inflector.dll",
+        "lib/net45/Inflector.dll",
+        "lib/winrt45/Inflector.dll"
+      ]
+    },
+    "Newtonsoft.Json/7.0.1": {
+      "sha512": "q3V4KLetMLnt1gpAVWgtXnHjKs0UG/RalBc29u2ZKxd5t5Ze4JBL5WiiYIklJyK/5CRiIiNwigVQUo0FgbsuWA==",
+      "files": [
+        "Newtonsoft.Json.7.0.1.nupkg",
+        "Newtonsoft.Json.7.0.1.nupkg.sha512",
+        "Newtonsoft.Json.nuspec",
+        "lib/net20/Newtonsoft.Json.dll",
+        "lib/net20/Newtonsoft.Json.xml",
+        "lib/net35/Newtonsoft.Json.dll",
+        "lib/net35/Newtonsoft.Json.xml",
+        "lib/net40/Newtonsoft.Json.dll",
+        "lib/net40/Newtonsoft.Json.xml",
+        "lib/net45/Newtonsoft.Json.dll",
+        "lib/net45/Newtonsoft.Json.xml",
+        "lib/portable-net40+sl5+wp80+win8+wpa81/Newtonsoft.Json.dll",
+        "lib/portable-net40+sl5+wp80+win8+wpa81/Newtonsoft.Json.xml",
+        "lib/portable-net45+wp80+win8+wpa81+dnxcore50/Newtonsoft.Json.dll",
+        "lib/portable-net45+wp80+win8+wpa81+dnxcore50/Newtonsoft.Json.xml",
+        "tools/install.ps1"
+      ]
+    },
+    "Newtonsoft.Json.Schema/1.0.10": {
+      "sha512": "7BRAtQvFMenaN4GZ+JBTFdVMcwKT/kBxmj1+JwoLpmLGm4KbMJcN7hyNwlF3qzPGY03TEZzC1CWCOVg0ssxwHw==",
+      "files": [
+        "Newtonsoft.Json.Schema.1.0.10.nupkg",
+        "Newtonsoft.Json.Schema.1.0.10.nupkg.sha512",
+        "Newtonsoft.Json.Schema.nuspec",
+        "lib/net35/Newtonsoft.Json.Schema.dll",
+        "lib/net35/Newtonsoft.Json.Schema.xml",
+        "lib/net40/Newtonsoft.Json.Schema.dll",
+        "lib/net40/Newtonsoft.Json.Schema.xml",
+        "lib/net45/Newtonsoft.Json.Schema.dll",
+        "lib/net45/Newtonsoft.Json.Schema.xml",
+        "lib/portable-net45+wp80+win8+wpa81+dnxcore50/Newtonsoft.Json.Schema.dll",
+        "lib/portable-net45+wp80+win8+wpa81+dnxcore50/Newtonsoft.Json.Schema.xml"
+      ]
+    },
+    "System.Linq.Dynamic/1.0.4": {
+      "sha512": "WfRPE4I3T4ED6T3SJGkPQxCfmS6mG2c9ww3OeXf8f+bLFL/k19fSH7jR6SZfw2r9F2wA0PZjFNbeTYVdYuTD8w==",
+      "files": [
+        "System.Linq.Dynamic.1.0.4.nupkg",
+        "System.Linq.Dynamic.1.0.4.nupkg.sha512",
+        "System.Linq.Dynamic.nuspec",
+        "lib/net40/System.Linq.Dynamic.dll"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "": [
+      "Inflector >= 1.0.0.0",
+      "Newtonsoft.Json >= 7.0.1",
+      "Newtonsoft.Json.Schema >= 1.0.10",
+      "System.Linq.Dynamic >= 1.0.4"
+    ],
+    "DNX,Version=v4.5.1": [
+      "fx/System.Xml >= 4.0",
+      "fx/System.Web >= 4.0",
+      "fx/System.Data >= 4.0",
+      "fx/System.Configuration >= 4.0",
+      "fx/System.ComponentModel.DataAnnotations >= 4.0"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "authors": [
+    "Brad Jones"
+  ],
+  "description": "A Laravel (Eloquent) inspired ORM for .NET",
+  "tags": [
+    "db",
+    "sql",
+    "orm",
+	"fluent",
+    "eloquent",
+    "active record"
+  ],
+  "projectUrl": "https://github.com/brad-jones/graceful",
+  "dependencies": {
+    "Inflector": "1.0.0.0",
+    "Newtonsoft.Json": "7.0.1",
+    "Newtonsoft.Json.Schema": "1.0.10",
+    "System.Linq.Dynamic": "1.0.4"
+  },
+  "frameworks": {
+    "dnx451": {
+      "frameworkAssemblies": {
+        "System.Xml": "4.0",
+        "System.Web": "4.0",
+        "System.Data": "4.0",
+        "System.Configuration": "4.0",
+        "System.ComponentModel.DataAnnotations": "4.0"
+      }
+    }
+  }
+}
