@@ -3679,19 +3679,18 @@ namespace Graceful
         {
             MappedPropsExceptId.ForEach(p =>
             {
-                // If the updated entity has a null value, we will skip to the
-                // next property and leave the existing property value as is.
-                if (p.GetValue(updated) == null) return;
+                // We can only deal with primative types.
+                if (!TypeMapper.IsClrType(p.PropertyType)) return;
 
                 // Do not copy the CreatedAt, ModifiedAt timestamps.
                 if (p.Name == "CreatedAt" || p.Name == "ModifiedAt") return;
 
-                // If the property type is a primative,
-                // we can easily just copy it over.
-                if (TypeMapper.IsClrType(p.PropertyType))
-                {
-                    p.SetValue(existing, p.GetValue(updated));
-                }
+                // If the updated entity has a null value, we will skip to the
+                // next property and leave the existing property value as is.
+                if (p.GetValue(updated) == null) return;
+
+                // Copy the property value
+                p.SetValue(existing, p.GetValue(updated));
 
                 // NOTE: We can not recursively merge relationships because
                 // we have no generic way of comparing entities. For example
