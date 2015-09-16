@@ -1430,7 +1430,7 @@ namespace Graceful
                             var query = Db.Qb
                             .SELECT("*")
                             .FROM(relation.ForeignTableName)
-                            .WHERE("Id", (int)ForeignId)
+                            .WHERE("Id", Convert.ToInt32(ForeignId))
                             .WHERE("[DeletedAt] IS NULL");
 
                             List<Dictionary<string, object>> records;
@@ -1488,7 +1488,7 @@ namespace Graceful
                                 var query = Db.Qb
                                 .SELECT("*")
                                 .FROM(relation.ForeignTableName)
-                                .WHERE("Id", (int)ForeignId)
+                                .WHERE("Id", Convert.ToInt32(ForeignId))
                                 .WHERE("[DeletedAt] IS NULL");
 
                                 List<Dictionary<string, object>> records;
