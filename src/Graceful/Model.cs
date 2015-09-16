@@ -20,7 +20,6 @@ namespace Graceful
     using Graceful.Utils;
     using Newtonsoft.Json;
     using System.Reflection;
-    using Graceful.Extensions;
     using Newtonsoft.Json.Linq;
     using System.ComponentModel;
     using Newtonsoft.Json.Schema;
@@ -3491,16 +3490,16 @@ namespace Graceful
                 // The new DbRecord.
                 // In an insert it will contain all values, except Id.
                 // In an update it will only contain those that changed.
-                var record = new Dictionary<string, object>();
-                cols.ToList().ForEach((key, value) =>
+                var record = cols.Zip(values, (k, v) => new { k, v })
+                .ToDictionary(x => x.k, x =>
                 {
-                    if (values[key].GetType() == typeof(DBNull))
+                    if (x.v.GetType() == typeof(DBNull))
                     {
-                        record[value] = null;
+                        return null;
                     }
                     else
                     {
-                        record[value] = values[key];
+                        return x.v;
                     }
                 });
 
@@ -3527,16 +3526,13 @@ namespace Graceful
                 }
                 else
                 {
-                    // Create the set dict
-                    var setDict = new Dictionary<string, object>();
-                    cols.ToList().ForEach((key, value) =>
-                    {
-                        setDict[value] = values[key];
-                    });
-
                     // Execute the UPDATE query
                     Db.Qb.UPDATE(SqlTableName)
-                    .SET(setDict)
+                    .SET
+                    (
+                        cols.Zip(values, (k, v) => new { k, v })
+                        .ToDictionary(x => x.k, x => x.v)
+                    )
                     .WHERE("Id", this.Id)
                     .Execute();
 

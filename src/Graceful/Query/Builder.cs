@@ -391,7 +391,7 @@ namespace Graceful.Query
 
                     // If the placeholder it's self is an array we need to treat
                     // each item of the array as an individual placeholder.
-                    if (value.GetType().IsArray)
+                    if (value.GetType().IsArray && value.GetType() != typeof(byte[]))
                     {
                         var strings = new List<string>();
 
