@@ -3487,6 +3487,12 @@ namespace Graceful
                     }
                 }).ToArray();
 
+                // The new DbRecord.
+                // In an insert it will contain all values, except Id.
+                // In an update it will only contain those that changed.
+                var record = cols.Zip(values, (k, v) => new { k, v })
+                .ToDictionary(x => x.k, x => x.v);
+
                 if (this.Id == 0)
                 {
                     // Execute the INSERT Query
@@ -3502,19 +3508,25 @@ namespace Graceful
                         Db.Qb.SELECT("IDENT_CURRENT({0})", SqlTableName).Scalar
                     );
 
+                    // Set the DbRecord
+                    this.DbRecord = record;
+                    this.DbRecord["Id"] = this.Id;
+
                     this.FireAfterInsert();
                 }
                 else
                 {
                     // Execute the UPDATE query
                     Db.Qb.UPDATE(SqlTableName)
-                    .SET
-                    (
-                        cols.Zip(values, (k, v) => new { k, v })
-                        .ToDictionary(x => x.k, x => x.v)
-                    )
+                    .SET(record)
                     .WHERE("Id", this.Id)
                     .Execute();
+
+                    // Update the existing db record
+                    record.ToList().ForEach(item =>
+                    {
+                        this.DbRecord[item.Key] = item.Value;
+                    });
 
                     this.FireAfterUpdate();
                 }
