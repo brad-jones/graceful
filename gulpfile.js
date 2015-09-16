@@ -48,7 +48,7 @@ gulp.task('restore', function(done)
 
 /**
  * Runs Unit Tests, using Xunit.
- */
+ *
 gulp.task('test', function(done)
 {
     run('dnx '+config.testProject+' test').exec(done);
@@ -57,7 +57,7 @@ gulp.task('test', function(done)
 /**
  * Assuming the Unit Tests pass this will create a new NuGet Package.
  */
-gulp.task('package', ['clean', 'bump', 'restore', 'test'], function(done)
+gulp.task('package', ['clean', 'bump', 'restore'/*, 'test'*/], function(done)
 {
     run
     (
