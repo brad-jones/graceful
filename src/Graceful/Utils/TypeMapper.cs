@@ -305,6 +305,11 @@ namespace Graceful.Utils
                 }
             }
 
+            if (type.IsArray)
+            {
+                type = type.GetElementType();
+            }
+
             return ClrTypes.Any(x => x.IsAssignableFrom(type));
         }
 
