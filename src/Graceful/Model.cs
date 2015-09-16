@@ -1430,7 +1430,7 @@ namespace Graceful
                             var query = Db.Qb
                             .SELECT("*")
                             .FROM(relation.ForeignTableName)
-                            .WHERE("Id", Convert.ToInt32(ForeignId))
+                            .WHERE("Id", (int)ForeignId)
                             .WHERE("[DeletedAt] IS NULL");
 
                             List<Dictionary<string, object>> records;
@@ -1488,7 +1488,7 @@ namespace Graceful
                                 var query = Db.Qb
                                 .SELECT("*")
                                 .FROM(relation.ForeignTableName)
-                                .WHERE("Id", Convert.ToInt32(ForeignId))
+                                .WHERE("Id", (int)ForeignId)
                                 .WHERE("[DeletedAt] IS NULL");
 
                                 List<Dictionary<string, object>> records;
@@ -3491,7 +3491,17 @@ namespace Graceful
                 // In an insert it will contain all values, except Id.
                 // In an update it will only contain those that changed.
                 var record = cols.Zip(values, (k, v) => new { k, v })
-                .ToDictionary(x => x.k, x => x.v);
+                .ToDictionary(x => x.k, x =>
+                {
+                    if (x.v.GetType() == typeof(DBNull))
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        return x.v;
+                    }
+                });
 
                 if (this.Id == 0)
                 {
@@ -3518,7 +3528,11 @@ namespace Graceful
                 {
                     // Execute the UPDATE query
                     Db.Qb.UPDATE(SqlTableName)
-                    .SET(record)
+                    .SET
+                    (
+                        cols.Zip(values, (k, v) => new { k, v })
+                        .ToDictionary(x => x.k, x => x.v)
+                    )
                     .WHERE("Id", this.Id)
                     .Execute();
 
