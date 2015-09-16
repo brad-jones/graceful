@@ -12,20 +12,9 @@
 
 namespace Graceful.Query
 {
-    using System;
     using System.Text;
     using System.Linq;
     using System.Data.SqlClient;
-    using System.Collections.Generic;
-
-    /**
-     * Instead of typing "Dictionary<string, object>" everywhere,
-     * we have created a few aliases. SqlParams are used when building querys.
-     * And SqlResult represents a row or record from a database table.
-     */
-
-    public class SqlParams : Dictionary<string, object> { }
-    public class SqlResult : Dictionary<string, object> { }
 
     /**
      * An SqlId is a identifier used in an Sql Query, such as a table name
@@ -38,7 +27,7 @@ namespace Graceful.Query
      * 	helper.BuildCmd
      * 	(
      * 		"SELECT @col1 FROM @tableName WHERE @col2 = @value",
-     * 		new SqlParams
+     * 		new Dictionary<string, object>
      * 		{
      * 			{"@col1", new SqlId("FirstName")},
      * 			{"@tableName", new SqlId("Users")},

@@ -1,17 +1,24 @@
+////////////////////////////////////////////////////////////////////////////////
+//           ________                                _____        __
+//          /  _____/_______ _____     ____   ____ _/ ____\__ __ |  |
+//         /   \  ___\_  __ \\__  \  _/ ___\_/ __ \\   __\|  |  \|  |
+//         \    \_\  \|  | \/ / __ \_\  \___\  ___/ |  |  |  |  /|  |__
+//          \______  /|__|   (____  / \___  >\___  >|__|  |____/ |____/
+//                 \/             \/      \/     \/
+// =============================================================================
+//           Designed & Developed by Brad Jones <brad @="bjc.id.au" />
+// =============================================================================
+////////////////////////////////////////////////////////////////////////////////
+
 namespace Graceful
 {
     using System;
-    using System.Text;
     using System.IO;
-    using System.Linq;
-    using System.Xml;
-    using System.Data;
-    using System.Data.SqlClient;
-    using System.Reflection;
-    using System.Collections.Generic;
-    using Inflector;
     using Graceful.Utils;
     using Newtonsoft.Json;
+    using System.Reflection;
+    using System.Data.SqlClient;
+    using System.Collections.Generic;
 
     public class Context
     {
@@ -44,7 +51,7 @@ namespace Graceful
          * For most applications with a single database server you
          * can simply call this method early on in your app bootup.
          */
-        public static void Connect(string cs, bool migrate = false, bool seed = false, bool log = false)
+        public static void Connect(string cs, bool migrate = false, bool log = false)
         {
             lock (ThreadLocker)
             {
@@ -52,7 +59,6 @@ namespace Graceful
                 (
                     cs,
                     migrate: migrate,
-                    seed: seed,
                     log: log
                 );
             }
@@ -299,7 +305,7 @@ namespace Graceful
          * ```
          */
         public RelationshipDiscoverer Relationships { get; protected set; }
-        
+
         /**
          * The Newtonsoft Json Serializer that we will use throughout.
          */
@@ -313,8 +319,7 @@ namespace Graceful
                     (
                         new JsonSerializerSettings
                         {
-                            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                            ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                            PreserveReferencesHandling = PreserveReferencesHandling.Objects
                         }
                     );
                 }
@@ -339,21 +344,19 @@ namespace Graceful
          *
          * _see: the Models property for more info on this._
          *
-         * > NOTE: The Context also manages Migrations and Seeds
-         * > automatically for you if you let it.
+         * > NOTE: The Context also manages Migrations if you let it.
          *
          * You should only have to create your own Context if you have multiple
          * diffrent databases to connect to. For most use cases please use the
          * static "Connect" method.
          */
-        public Context(string cs, bool migrate = false, bool seed = false, bool inject = true, bool log = false)
+        public Context(string cs, bool migrate = false, bool log = false, bool inject = true)
         {
             this.ConnectionString = cs;
             this.Relationships = new RelationshipDiscoverer(this.Models);
             if (log) this._LogStream = new MemoryStream();
             if (inject) this.GiveModelsContext();
-            if (migrate) this.RunMigrations();
-            if (seed) this.RunSeeds();
+            if (migrate) new Migrator(this);
         }
 
         /**
@@ -417,10 +420,6 @@ namespace Graceful
          * Loops through all models in the current context and provides them
          * with this Context so they may connect to the database and perform
          * operations.
-         *
-         * > TODO: This is basically performing IoC, and injecting the instance
-         * > of the Context into the Model. One day we may employ the use of an
-         * > actual IoC Container. Such as Ninject...
          */
         protected void GiveModelsContext()
         {
@@ -433,31 +432,6 @@ namespace Graceful
                     BindingFlags.Public |
                     BindingFlags.Static
                 ).SetValue(null, this);
-            });
-        }
-
-        /**
-         * Runs migrations for the current context.
-         */
-        public void RunMigrations()
-        {
-            new Migrator(this);
-        }
-
-        /**
-         * Loops through all models and runs their Seed method if they have one.
-         */
-        public void RunSeeds()
-        {
-            this.Models.ForEach(model =>
-            {
-                if (model.GetMethod("Seed") != null)
-                {
-                    Model.Dynamic(model).InvokeStatic
-                    (
-                        "Seed"
-                    );
-                }
             });
         }
     }

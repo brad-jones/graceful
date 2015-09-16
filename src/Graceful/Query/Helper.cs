@@ -46,7 +46,7 @@ namespace Graceful.Query
          * 	var cmd = helper.BuildCmd
          * 	(
          * 		"SELECT * FROM people WHERE surname = @surname AND age > @age",
-         * 		new SqlParams
+         * 		new Dictionary<string, object>
          * 		{
          * 			{ "@surname", "Jones" },
          * 			{ "@age", 27 }
@@ -56,7 +56,7 @@ namespace Graceful.Query
          *
          * > NOTE: You should dispose of the command once you have executed it.
          */
-        public SqlCommand BuildCmd(string query, SqlParams parameters = null)
+        public SqlCommand BuildCmd(string query, Dictionary<string, object> parameters = null)
         {
             query = this.InlineSqlIds(query, parameters);
 
@@ -104,7 +104,7 @@ namespace Graceful.Query
          * > automatically close and dispose of both the SqlCommand and the
          * > SqlConnection used in the making of the reader.
          */
-        public SqlDataReader Read(string query, SqlParams parameters = null)
+        public SqlDataReader Read(string query, Dictionary<string, object> parameters = null)
         {
             using (var cmd = this.BuildCmd(query, parameters))
             {
@@ -131,7 +131,7 @@ namespace Graceful.Query
          * 	}
          * ```
          */
-        public DataTable ReadToDt(string query, SqlParams parameters = null)
+        public DataTable ReadToDt(string query, Dictionary<string, object> parameters = null)
         {
             var dt = new DataTable();
 
@@ -154,7 +154,7 @@ namespace Graceful.Query
          *
          * > NOTE: The SqlCommand & SqlConnection are disposed of for you.
          */
-        public object ReadToScalar(string query, SqlParams parameters = null)
+        public object ReadToScalar(string query, Dictionary<string, object> parameters = null)
         {
             object result;
 
@@ -178,7 +178,7 @@ namespace Graceful.Query
          *
          * > NOTE: The SqlCommand & SqlConnection are disposed of for you.
          */
-        public int Execute(string query, SqlParams parameters = null)
+        public int Execute(string query, Dictionary<string, object> parameters = null)
         {
             int result;
 
@@ -205,9 +205,9 @@ namespace Graceful.Query
          * 	});
          * ```
          */
-        public List<SqlResult> GetRows(string query, SqlParams parameters = null)
+        public List<Dictionary<string, object>> GetRows(string query, Dictionary<string, object> parameters = null)
         {
-            List<SqlResult> list;
+            List<Dictionary<string, object>> list;
 
             using (DataTable dt = this.ReadToDt(query, parameters))
             {
@@ -226,7 +226,7 @@ namespace Graceful.Query
          * 	var person = helper.GetRow("SELECT * FROM People WHERE Id = 10");
          * ```
          */
-        public SqlResult GetRow(string query, SqlParams parameters = null)
+        public Dictionary<string, object> GetRow(string query, Dictionary<string, object> parameters = null)
         {
             return this.GetRows(query, parameters).First();
         }
@@ -254,7 +254,7 @@ namespace Graceful.Query
                 "SELECT COUNT(*)\n" +
                 "FROM @dbName.[INFORMATION_SCHEMA].[TABLES]\n" +
                 "WHERE [TABLE_NAME] = @value",
-                new SqlParams
+                new Dictionary<string, object>
                 {
                     {"@dbName", new SqlId(this.Db.DatabaseName)},
                     {"@value", tableName}
@@ -283,7 +283,7 @@ namespace Graceful.Query
             return (int)this.ReadToScalar
             (
                 "SELECT COUNT(*) FROM @value",
-                new SqlParams
+                new Dictionary<string, object>
                 {
                     {"@value", new SqlId(tableName)}
                 }
@@ -314,7 +314,7 @@ namespace Graceful.Query
                 "FROM @dbName.[INFORMATION_SCHEMA].[COLUMNS]\n" +
                 "WHERE [TABLE_NAME] = @tableName " +
                 "AND [COLUMN_NAME] = @colName",
-                new SqlParams
+                new Dictionary<string, object>
                 {
                     {"@dbName", new SqlId(this.Db.DatabaseName)},
                     {"@tableName", tableName},
@@ -343,7 +343,7 @@ namespace Graceful.Query
                 "WHERE table_catalog = @dbName " +
                 "AND table_name = @tableName " +
                 "AND column_name = @colName",
-                new SqlParams
+                new Dictionary<string, object>
                 {
                     {"@dbName", this.Db.DatabaseName},
                     {"@tableName", tableName},
@@ -359,7 +359,7 @@ namespace Graceful.Query
          *
          * > NOTE: See the Graceful.Query.SqlId class docs for more info.
          */
-        protected string InlineSqlIds(string query, SqlParams parameters)
+        protected string InlineSqlIds(string query, Dictionary<string, object> parameters)
         {
             // If the query has no parameters then we don't have anything to do.
             if (parameters == null || parameters.Count == 0) return query;
@@ -492,15 +492,15 @@ namespace Graceful.Query
         }
 
         /**
-         * Given a DataTable, we will return a List of SqlResults.
+         * Given a DataTable, we will return a List of Dictionary<string, object>s.
          */
-        protected List<SqlResult> GetRows(DataTable dt)
+        protected List<Dictionary<string, object>> GetRows(DataTable dt)
         {
-            var list = new List<SqlResult>();
+            var list = new List<Dictionary<string, object>>();
 
             foreach (DataRow row in dt.Rows)
             {
-                var result = new SqlResult();
+                var result = new Dictionary<string, object>();
 
                 foreach (DataColumn column in dt.Columns)
                 {

@@ -18,6 +18,7 @@ namespace Graceful.Utils
     using System.Collections.Generic;
     using Inflector;
     using Graceful.Utils;
+    using Newtonsoft.Json.Linq;
 
     public class RelationshipDiscoverer
     {
@@ -59,8 +60,6 @@ namespace Graceful.Utils
 
             /**
              * The foreign property of the relationship.
-             *
-             * > NOTE: This may be null in the event of a Lazy OtoM or OtoO.
              */
             public PropertyInfo ForeignProperty;
 
@@ -169,7 +168,11 @@ namespace Graceful.Utils
                         {
                             if ((relation = this.IsManyToOne(prop)) == null)
                             {
-                                throw new Exception("Unknown Relationship");
+                                throw new Exception
+                                (
+                                    "Unknown Relationship (#1) Local Property - " +
+                                    JObject.FromObject(prop).ToString()
+                                );
                             }
                         }
                     }
@@ -180,14 +183,22 @@ namespace Graceful.Utils
                         // TypeMapper has failed us.
                         if (!prop.PropertyType.IsSubclassOf(typeof(Model)))
                         {
-                            throw new Exception("Unknown Relationship");
+                            throw new Exception
+                            (
+                                "Unknown Relationship (#2) Local Property - " +
+                                JObject.FromObject(prop).ToString()
+                            );
                         }
 
                         if ((relation = this.IsOneToMany(prop)) == null)
                         {
                             if ((relation = this.IsOneToOne(prop)) == null)
                             {
-                                throw new Exception("Unknown Relationship");
+                                throw new Exception
+                                (
+                                    "Unknown Relationship (#3) Local Property - " +
+                                    JObject.FromObject(prop).ToString()
+                                );
                             }
                         }
                     }
@@ -254,30 +265,64 @@ namespace Graceful.Utils
             // other, we use the property names to create a unique pivot table.
             else if (localProps.Count > 1 || foreignProps.Count > 1)
             {
-                // Determin the relation link id.
-                relation.LinkIdentifier = localProp.Name.Replace
-                (
-                    relation.ForeignTableName, String.Empty
-                );
-
-                // We should have at least one foreign
-                // property that contains the LinkIdentifier.
                 PropertyInfo foreignProp;
-                try
+
+                // First lets check for any explictly set InversePropertyAttributes.
+                var foreignInverseProp = localProp.GetCustomAttribute<InversePropertyAttribute>(false);
+                if (foreignInverseProp != null)
                 {
+                    // Sweet the local property is telling is
+                    // exactly which foreign property to use.
                     foreignProp = foreignProps.Single
                     (
-                        fp => fp.Name.Contains
-                        (
-                            relation.LinkIdentifier
-                        )
+                        fp => fp.Name == foreignInverseProp.Value
                     );
                 }
-                catch
+                else
                 {
-                    // We couldn't find a matching property
-                    // so we don't have a relationship.
-                    return null;
+                    // Lets see if any of the foreign properties have an
+                    // InversePropertyAttribute that points to our
+                    // local property.
+                    foreignProp = foreignProps
+                    .Where(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false) != null)
+                    .SingleOrDefault(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false).Value == localProp.Name);
+                }
+
+                // Now lets attempt to find our inverse property by looking at the property names.
+                if (foreignProp == null)
+                {
+                    // Determin the relation link id.
+                    relation.LinkIdentifier = localProp.Name.Replace
+                    (
+                        relation.ForeignTableName, String.Empty
+                    );
+
+                    // We should have at least one foreign
+                    // property that contains the LinkIdentifier.
+
+                    try
+                    {
+                        foreignProp = foreignProps.Single
+                        (
+                            fp => fp.Name.Contains
+                            (
+                                relation.LinkIdentifier
+                            )
+                        );
+                    }
+                    catch
+                    {
+                        // We couldn't find a matching property
+                        // so we don't have a relationship.
+                        return null;
+                    }
+                }
+                else
+                {
+                    // If the forgeign poroperty was found by means of a
+                    // InversePropertyAttribute then we still need a
+                    // LinkIdentifier so we need to make one.
+                    relation.LinkIdentifier = localProp.Name + foreignProp.Name;
                 }
 
                 // Save both navigational properties.
@@ -287,6 +332,10 @@ namespace Graceful.Utils
                 // Create the pivot table name candiates.
                 pivotTableName = relation.LocalTableName + relation.LinkIdentifier + relation.ForeignTableName;
                 pivotTableNameAlt = relation.ForeignTableName + relation.LinkIdentifier + relation.LocalTableName;
+            }
+            else
+            {
+                return null;
             }
 
             // Now there are 2 possible pivot table names.
@@ -347,6 +396,13 @@ namespace Graceful.Utils
             var foreignProps = Model.Dynamic(relation.ForeignType).MappedProps
             .Where(fp => fp.PropertyType == relation.LocalType).ToList();
 
+            // If we can't find any matching properties on the foreign
+            // side well we don't have a Many to One relationship.
+            if (foreignProps.Count == 0)
+            {
+                return null;
+            }
+
             // If there is 1 local and 1 foreign property that reference each
             // other, we have a simple, everyday, Many to One relationship.
             if (localProps.Count == 1 && foreignProps.Count == 1)
@@ -358,43 +414,86 @@ namespace Graceful.Utils
 
             // If we have a single local property but no foreign property.
             // We have a "Lazy" or "One Way" Many to One relationship.
-            else if (localProps.Count == 1 && foreignProps.Count == 0)
+            //
+            // > NOTE: I think I have decided that lazy relationships are
+            // > a pain in the arse and should not be allowed...
+            /*else if (localProps.Count == 1 && foreignProps.Count == 0)
             {
                 relation.LocalProperty = localProp;
                 relation.ForeignProperty = null;
                 relation.ForeignKeyColumnName = relation.LocalTableNameSingular + "Id";
-            }
+            }*/
 
             // If there are multiple properties that reference each other,
             // we need to create the foreign key based on the property name
             // instead. So that the relationships remains unique.
             else if (localProps.Count > 1 || foreignProps.Count > 1)
             {
-                // Determin the relationship link id.
-                relation.LinkIdentifier = localProp.Name.Replace
-                (
-                    relation.ForeignTableName, String.Empty
-                );
-
-                // We should have at least one foreign
-                // property that contains the LinkIdentifier.
                 PropertyInfo foreignProp;
-                try
+
+                // First lets check for any explictly set InversePropertyAttributes.
+                var foreignInverseProp = localProp.GetCustomAttribute<InversePropertyAttribute>(false);
+                if (foreignInverseProp != null)
                 {
+                    // Sweet the local property is telling is
+                    // exactly which foreign property to use.
                     foreignProp = foreignProps.Single
                     (
-                        fp => fp.Name.Contains
-                        (
-                            relation.LinkIdentifier
-                        )
+                        fp => fp.Name == foreignInverseProp.Value
                     );
                 }
-                catch
+                else
                 {
-                    // Okay so we couldn't find a matching property.
-                    // We still have a ManyToOne relationship, its a Lazy One,
-                    // that requires a unique foreign key column name.
-                    foreignProp = null;
+                    // Lets see if any of the foreign properties have an
+                    // InversePropertyAttribute that points to our
+                    // local property.
+                    foreignProp = foreignProps
+                    .Where(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false) != null)
+                    .SingleOrDefault(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false).Value == localProp.Name);
+                }
+
+                // Now lets attempt to find our inverse property by looking at the property names.
+                if (foreignProp == null)
+                {
+                    // Determin the relationship link id.
+                    relation.LinkIdentifier = localProp.Name.Replace
+                    (
+                        relation.ForeignTableName, String.Empty
+                    );
+
+                    // We should have at least one foreign
+                    // property that contains the LinkIdentifier.
+                    try
+                    {
+                        foreignProp = foreignProps.Single
+                        (
+                            fp => fp.Name.Contains
+                            (
+                                relation.LinkIdentifier
+                            )
+                        );
+                    }
+                    catch
+                    {
+                        // Okay so we couldn't find a matching property.
+                        // We still have a ManyToOne relationship, its a Lazy One,
+                        // that requires a unique foreign key column name.
+                        //
+                        // > NOTE: I think I have decided that lazy relationships
+                        // > are a pain in the arse and should not be allowed...
+                        //foreignProp = null;
+
+                        // We couldn't find a matching property
+                        // so we don't have a relationship.
+                        return null;
+                    }
+                }
+                else
+                {
+                    // If the forgeign poroperty was found by means of a
+                    // InversePropertyAttribute then we still need a
+                    // LinkIdentifier so we need to make one.
+                    relation.LinkIdentifier = localProp.Name + foreignProp.Name;
                 }
 
                 // Save both navigational properties.
@@ -403,6 +502,10 @@ namespace Graceful.Utils
 
                 // Set the foreign key column name
                 relation.ForeignKeyColumnName = relation.LocalTableNameSingular + relation.LinkIdentifier + "Id";
+            }
+            else
+            {
+                return null;
             }
 
             // Finally return the relationship descriptor.
@@ -465,30 +568,63 @@ namespace Graceful.Utils
             // instead. So that the relationships remains unique.
             else if (localProps.Count > 1 || foreignProps.Count > 1)
             {
-                // Determin the relationship link id.
-                relation.LinkIdentifier = localProp.Name.Replace
-                (
-                    relation.ForeignTableNameSingular, String.Empty
-                );
-
-                // We should have at least one foreign
-                // property that contains the LinkIdentifier.
                 PropertyInfo foreignProp;
-                try
+
+                // First lets check for any explictly set InversePropertyAttributes.
+                var foreignInverseProp = localProp.GetCustomAttribute<InversePropertyAttribute>(false);
+                if (foreignInverseProp != null)
                 {
+                    // Sweet the local property is telling is
+                    // exactly which foreign property to use.
                     foreignProp = foreignProps.Single
                     (
-                        fp => fp.Name.Contains
-                        (
-                            relation.LinkIdentifier
-                        )
+                        fp => fp.Name == foreignInverseProp.Value
                     );
                 }
-                catch
+                else
                 {
-                    // We couldn't find a matching property
-                    // so we don't have a relationship.
-                    return null;
+                    // Lets see if any of the foreign properties have an
+                    // InversePropertyAttribute that points to our
+                    // local property.
+                    foreignProp = foreignProps
+                    .Where(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false) != null)
+                    .SingleOrDefault(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false).Value == localProp.Name);
+                }
+
+                // Now lets attempt to find our inverse property by looking at the property names.
+                if (foreignProp == null)
+                {
+                    // Determin the relationship link id.
+                    relation.LinkIdentifier = localProp.Name.Replace
+                    (
+                        relation.ForeignTableNameSingular, String.Empty
+                    );
+
+                    // We should have at least one foreign
+                    // property that contains the LinkIdentifier.
+                    try
+                    {
+                        foreignProp = foreignProps.Single
+                        (
+                            fp => fp.Name.Contains
+                            (
+                                relation.LinkIdentifier
+                            )
+                        );
+                    }
+                    catch
+                    {
+                        // We couldn't find a matching property
+                        // so we don't have a relationship.
+                        return null;
+                    }
+                }
+                else
+                {
+                    // If the forgeign poroperty was found by means of a
+                    // InversePropertyAttribute then we still need a
+                    // LinkIdentifier so we need to make one.
+                    relation.LinkIdentifier = localProp.Name + foreignProp.Name;
                 }
 
                 // Save both navigational properties.
@@ -497,6 +633,10 @@ namespace Graceful.Utils
 
                 // Set the foreign key column name
                 relation.ForeignKeyColumnName = relation.ForeignTableNameSingular + relation.LinkIdentifier + "Id";
+            }
+            else
+            {
+                return null;
             }
 
             // Finally return the relationship descriptor.
@@ -528,6 +668,13 @@ namespace Graceful.Utils
             // Get all foreign properties that are of the local type.
             var foreignProps = Model.Dynamic(relation.ForeignType).MappedProps
             .Where(fp => fp.PropertyType == relation.LocalType).ToList();
+
+            // If we can't find any matching properties on the foreign
+            // side well we don't have a One to One relationship.
+            if (foreignProps.Count == 0)
+            {
+                return null;
+            }
 
             // If there is only 1 local and 1 foreign property that reference
             // each other then we create the foreign key based on the model
@@ -563,7 +710,10 @@ namespace Graceful.Utils
 
             // If there are 0 foreignProps, we still have a one to one
             // relationship, the other side just doesn't know anything about it.
-            else if (localProps.Count == 1 && foreignProps.Count == 0)
+            //
+            // > NOTE: I think I have decided that lazy relationships are
+            // > a pain in the arse and should not be allowed...
+            /*else if (localProps.Count == 1 && foreignProps.Count == 0)
             {
                 // Save both navigational properties.
                 relation.LocalProperty = localProp;
@@ -573,38 +723,78 @@ namespace Graceful.Utils
                 // be confident about where the foreign key will live.
                 relation.ForeignKeyTableName = relation.LocalTableName;
                 relation.ForeignKeyColumnName = relation.ForeignTableNameSingular + "Id";
-            }
+            }*/
 
             // If there are multiple properties that reference each other,
             // we need to create the foreign key based on the property names
             // instead. So that the relationships remains unique.
             else if (localProps.Count > 1 || foreignProps.Count > 1)
             {
-                // Determin the relationship link id.
-                relation.LinkIdentifier = localProp.Name.Replace
-                (
-                    relation.ForeignTableNameSingular, String.Empty
-                );
-
-                // We should have at least one foreign
-                // property that contains the LinkIdentifier.
                 PropertyInfo foreignProp;
-                try
+
+                // First lets check for any explictly set InversePropertyAttributes.
+                var foreignInverseProp = localProp.GetCustomAttribute<InversePropertyAttribute>(false);
+                if (foreignInverseProp != null)
                 {
+                    // Sweet the local property is telling is
+                    // exactly which foreign property to use.
                     foreignProp = foreignProps.Single
                     (
-                        fp => fp.Name.Contains
-                        (
-                            relation.LinkIdentifier
-                        )
+                        fp => fp.Name == foreignInverseProp.Value
                     );
                 }
-                catch
+                else
                 {
-                    // Okay so we couldn't find a matching property.
-                    // We still have a OneToOne relationship, its a Lazy One,
-                    // that requires a unique foreign key column name.
-                    foreignProp = null;
+                    // Lets see if any of the foreign properties have an
+                    // InversePropertyAttribute that points to our
+                    // local property.
+                    foreignProp = foreignProps
+                    .Where(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false) != null)
+                    .SingleOrDefault(fp => fp.GetCustomAttribute<InversePropertyAttribute>(false).Value == localProp.Name);
+                }
+
+                // Now lets attempt to find our inverse property by looking at the property names.
+                if (foreignProp == null)
+                {
+                    // Determin the relationship link id.
+                    relation.LinkIdentifier = localProp.Name.Replace
+                    (
+                        relation.ForeignTableNameSingular, String.Empty
+                    );
+
+                    // We should have at least one foreign
+                    // property that contains the LinkIdentifier.
+                    try
+                    {
+                        foreignProp = foreignProps.Single
+                        (
+                            fp => fp.Name.Contains
+                            (
+                                relation.LinkIdentifier
+                            )
+                        );
+                    }
+                    catch
+                    {
+                        // Okay so we couldn't find a matching property.
+                        // We still have a OneToOne relationship, its a Lazy One,
+                        // that requires a unique foreign key column name.
+                        //
+                        // > NOTE: I think I have decided that lazy relationships
+                        // > are a pain in the arse and should not be allowed...
+                        //foreignProp = null;
+
+                        // We couldn't find a matching property
+                        // so we don't have a relationship.
+                        return null;
+                    }
+                }
+                else
+                {
+                    // If the forgeign poroperty was found by means of a
+                    // InversePropertyAttribute then we still need a
+                    // LinkIdentifier so we need to make one.
+                    relation.LinkIdentifier = localProp.Name + foreignProp.Name;
                 }
 
                 // Save both navigational properties.
@@ -632,6 +822,10 @@ namespace Graceful.Utils
                     relation.ForeignKeyTableName = relation.LocalTableName;
                     relation.ForeignKeyColumnName = relation.ForeignTableNameSingular + relation.LinkIdentifier + "Id";
                 }
+            }
+            else
+            {
+                return null;
             }
 
             // Finally return the relationship descriptor.

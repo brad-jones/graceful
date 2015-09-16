@@ -10,7 +10,7 @@
 // =============================================================================
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace Graceful.ExpressionVisitors
+namespace Graceful.Utils.Visitors
 {
     using System;
     using System.Text;
@@ -21,27 +21,27 @@ namespace Graceful.ExpressionVisitors
     using Graceful.Utils;
 
     /**
-     * Given an Expression Tree, we will convert it into a SQL SET clause.
+     * Given an Expression Tree, we will convert it into a SQL WHERE clause.
      *
      * ```
      * 	Expression<Func<TModel, bool>> expression =
-     * 		m => m.FirstName == "Brad" && m.LastName == "Jones";
+     * 		m => m.Id == 1;
      *
-     * 	var converter = new AssignmentsConverter();
+     * 	var converter = new PredicateConverter();
      * 	converter.Visit(expression.Body);
      *
-     * 	// converter.Sql == "FirstName = {0}, LastName = {1}"
-     * 	// converter.Parameters == new object[] { "Brad", "Jones" }
+     * 	// converter.Sql == "Id = {0}"
+     * 	// converter.Parameters == new object[] { 1 }
      * ```
      */
-    public class AssignmentsConverter : ExpressionVisitor
+    public class PredicateConverter : ExpressionVisitor
     {
         /**
-         * The portion of the SQL query that will come after a SET clause.
+         * The portion of the SQL query that will come after a WHERE clause.
          */
         public string Sql
         {
-            get { return this.sql.ToString();  }
+            get { return this.sql.ToString().Trim();  }
         }
 
         private StringBuilder sql = new StringBuilder();
@@ -72,22 +72,31 @@ namespace Graceful.ExpressionVisitors
 
         protected override Expression VisitBinary(BinaryExpression node)
         {
+            // Open the binary expression in SQL
+            this.sql.Append("(");
+
             // Go and visit the left hand side of this expression
             this.Visit(node.Left);
 
             // Add the operator in the middle
             switch (node.NodeType)
             {
-                case ExpressionType.Equal:
-                    this.sql.Append("=");
-                break;
+                case ExpressionType.Equal: this.sql.Append("="); break;
+                case ExpressionType.NotEqual: this.sql.Append("!="); break;
+                case ExpressionType.GreaterThan: this.sql.Append(">"); break;
+                case ExpressionType.GreaterThanOrEqual: this.sql.Append(">="); break;
+                case ExpressionType.LessThan: this.sql.Append("<"); break;
+                case ExpressionType.LessThanOrEqual: this.sql.Append("<="); break;
 
                 case ExpressionType.And:
                 case ExpressionType.AndAlso:
+                    this.sql.Append("AND");
+                    break;
+
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                    this.sql.Append(",");
-                break;
+                    this.sql.Append("OR");
+                    break;
 
                 default:
                     throw new Exception
@@ -101,6 +110,9 @@ namespace Graceful.ExpressionVisitors
 
             // Now visit the right hand side of this expression.
             this.Visit(node.Right);
+
+            // Close the binary expression in SQL
+            this.sql.Append(") ");
 
             return node;
         }
@@ -127,7 +139,6 @@ namespace Graceful.ExpressionVisitors
                 if (member is FieldInfo)
                 {
                     value = ((FieldInfo)member).GetValue(container);
-
                 }
                 else if (member is PropertyInfo)
                 {
@@ -203,10 +214,31 @@ namespace Graceful.ExpressionVisitors
         {
             if (!this.blockWriting)
             {
-                this.sql.Append("{");
-                this.sql.Append(this.parameters.Count);
-                this.sql.Append("}");
-                this.parameters.Add(node.Value);
+                var value = node.Value;
+
+                if (value == null)
+                {
+                    if (this.sql[this.sql.Length - 2] == '=')
+                    {
+                        if (this.sql[this.sql.Length - 3] == '!')
+                        {
+                            this.sql.Remove(this.sql.Length - 3, 3);
+                            this.sql.Append("IS NOT NULL");
+                        }
+                        else
+                        {
+                            this.sql.Remove(this.sql.Length - 2, 2);
+                            this.sql.Append("IS NULL");
+                        }
+                    }
+                }
+                else
+                {
+                    this.sql.Append("{");
+                    this.sql.Append(this.parameters.Count);
+                    this.sql.Append("}");
+                    this.parameters.Add(node.Value);
+                }
             }
 
             return node;

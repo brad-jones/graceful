@@ -10,7 +10,7 @@
 // =============================================================================
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace Graceful.ExpressionVisitors
+namespace Graceful.Utils.Visitors
 {
     using System;
     using System.Text;
@@ -21,20 +21,20 @@ namespace Graceful.ExpressionVisitors
     using Graceful.Utils;
 
     /**
-     * Given an Expression Tree, we will convert it into a SQL WHERE clause.
+     * Given an Expression Tree, we will convert it into a SQL LIKE clause.
      *
      * ```
      * 	Expression<Func<TModel, bool>> expression =
-     * 		m => m.Id == 1;
+     * 		m => m.Foo == "%Bar%" && m.Baz != "Q%x";
      *
-     * 	var converter = new PredicateConverter();
+     * 	var converter = new LikeConverter();
      * 	converter.Visit(expression.Body);
      *
-     * 	// converter.Sql == "Id = {0}"
-     * 	// converter.Parameters == new object[] { 1 }
+     * 	// converter.Sql == "Foo LIKE {0} AND Baz NOT LIKE {1}"
+     * 	// converter.Parameters == new object[] { "%Bar%", "Q%x" }
      * ```
      */
-    public class PredicateConverter : ExpressionVisitor
+    public class LikeConverter : ExpressionVisitor
     {
         /**
          * The portion of the SQL query that will come after a WHERE clause.
@@ -81,12 +81,8 @@ namespace Graceful.ExpressionVisitors
             // Add the operator in the middle
             switch (node.NodeType)
             {
-                case ExpressionType.Equal: this.sql.Append("="); break;
-                case ExpressionType.NotEqual: this.sql.Append("!="); break;
-                case ExpressionType.GreaterThan: this.sql.Append(">"); break;
-                case ExpressionType.GreaterThanOrEqual: this.sql.Append(">="); break;
-                case ExpressionType.LessThan: this.sql.Append("<"); break;
-                case ExpressionType.LessThanOrEqual: this.sql.Append("<="); break;
+                case ExpressionType.Equal: this.sql.Append("LIKE"); break;
+                case ExpressionType.NotEqual: this.sql.Append("NOT LIKE"); break;
 
                 case ExpressionType.And:
                 case ExpressionType.AndAlso:
@@ -139,6 +135,7 @@ namespace Graceful.ExpressionVisitors
                 if (member is FieldInfo)
                 {
                     value = ((FieldInfo)member).GetValue(container);
+
                 }
                 else if (member is PropertyInfo)
                 {
@@ -214,31 +211,10 @@ namespace Graceful.ExpressionVisitors
         {
             if (!this.blockWriting)
             {
-                var value = node.Value;
-
-                if (value == null)
-                {
-                    if (this.sql[this.sql.Length - 2] == '=')
-                    {
-                        if (this.sql[this.sql.Length - 3] == '!')
-                        {
-                            this.sql.Remove(this.sql.Length - 3, 3);
-                            this.sql.Append("IS NOT NULL");
-                        }
-                        else
-                        {
-                            this.sql.Remove(this.sql.Length - 2, 2);
-                            this.sql.Append("IS NULL");
-                        }
-                    }
-                }
-                else
-                {
-                    this.sql.Append("{");
-                    this.sql.Append(this.parameters.Count);
-                    this.sql.Append("}");
-                    this.parameters.Add(node.Value);
-                }
+                this.sql.Append("{");
+                this.sql.Append(this.parameters.Count);
+                this.sql.Append("}");
+                this.parameters.Add(node.Value);
             }
 
             return node;

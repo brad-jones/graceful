@@ -21,12 +21,55 @@ namespace Graceful.Extensions
     public static class ExtensionMethods
     {
         /**
+         * Give IList's a ForEach method.
+         * For some reason they don't get one from System.Linq
+         */
+        public static void ForEach<T>(this IList<T> list, Action<T> handler)
+        {
+            foreach (T value in list)
+            {
+                handler(value);
+            }
+        }
+
+        /**
+         * A Linq`ish way of breaking out of a ForEach.
+         *
+         * ```
+         * 	var fooList = new List<string>{ "abc", "xyz" };
+         *
+         * 	fooList.ForEach(value =>
+         *  {
+         *  	if (value == "abc")
+         *  	{
+         *  		// break out of the foreach
+         *  		return false;
+         *  	}
+         *
+         * 		// if null or true is returned, the loop will continue;
+         * 	});
+         * ```
+         */
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<T, bool?> handler)
+        {
+            foreach (T value in enumerable)
+            {
+                var result = handler(value);
+
+                if (result.HasValue && result.Value == false)
+                {
+                    break;
+                }
+            }
+        }
+
+        /**
          * A Linq`ish way of iterating over an Enumerable with an index.
          *
          * ```
          * 	var fooList = new List<string>{ "abc", "xyz" };
          *
-         * 	fooList.ForEachWithIndex((key, value) =>
+         * 	fooList.ForEach((key, value) =>
          *  {
          *  	Console.WriteLine(key + ": " + value);
          * 	});
@@ -34,12 +77,44 @@ namespace Graceful.Extensions
          *
          * _Credit: http://stackoverflow.com/questions/43021_
          */
-        public static void ForEachWithIndex<T>(this IEnumerable<T> enumerable, Action<int, T> handler)
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Action<int, T> handler)
         {
             int key = 0;
             foreach (T value in enumerable)
             {
                 handler(key++, value);
+            }
+        }
+
+        /**
+         * A Linq`ish way of breaking out of a ForEach.
+         *
+         * ```
+         * 	var fooList = new List<string>{ "abc", "xyz" };
+         *
+         * 	fooList.ForEach((key, value) =>
+         *  {
+         *  	if (value == "abc")
+         *  	{
+         *  		// break out of the foreach
+         *  		return false;
+         *  	}
+         *
+         * 		// if null or true is returned, the loop will continue;
+         * 	});
+         * ```
+         */
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<int, T, bool?> handler)
+        {
+            int key = 0;
+            foreach (T value in enumerable)
+            {
+                var result = handler(key++, value);
+
+                if (result.HasValue && result.Value == false)
+                {
+                    break;
+                }
             }
         }
 

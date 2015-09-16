@@ -1,25 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+//           ________                                _____        __
+//          /  _____/_______ _____     ____   ____ _/ ____\__ __ |  |
+//         /   \  ___\_  __ \\__  \  _/ ___\_/ __ \\   __\|  |  \|  |
+//         \    \_\  \|  | \/ / __ \_\  \___\  ___/ |  |  |  |  /|  |__
+//          \______  /|__|   (____  / \___  >\___  >|__|  |____/ |____/
+//                 \/             \/      \/     \/
+// =============================================================================
+//           Designed & Developed by Brad Jones <brad @="bjc.id.au" />
+// =============================================================================
+////////////////////////////////////////////////////////////////////////////////
+
 namespace Graceful.Query
 {
     using System;
-    using System.IO;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Data;
-    using System.Data.Common;
-    using System.Data.SqlClient;
     using System.Linq;
-    using System.Linq.Expressions;
-    using System.Reflection;
-    using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
-    using Newtonsoft.Json;
+    using Graceful.Utils.Visitors;
     using Newtonsoft.Json.Linq;
-    using Inflector;
-    using Graceful.Query;
-    using Graceful.Utils;
-    using Graceful.ExpressionVisitors;
+    using System.Linq.Expressions;
+    using System.Collections.Generic;
+    using ExpressionBuilder = Graceful.Dynamic.ExpressionBuilder;
 
-    public class Linq<TModel> where TModel:Model<TModel>, new()
+    public class Linq<TModel> where TModel : Model, new()
     {
         /**
          * The Graceful Database Context.
@@ -35,6 +36,7 @@ namespace Graceful.Query
          * A Graceful Query Builder instance that
          * is the source of data for the set.
          */
+        protected Query.Builder _DefiningQuery;
         protected Query.Builder DefiningQuery
         {
             get
@@ -53,8 +55,6 @@ namespace Graceful.Query
                 this._DefiningQuery = value;
             }
         }
-
-        protected Query.Builder _DefiningQuery;
 
         /**
          * Returns the actual SQL query text for the current query.
@@ -79,10 +79,10 @@ namespace Graceful.Query
          * ```cs
          * 	var linq = new Linq<Foo>("Foo", Context.GlobalCtx);
          * 	var params = linq.Where(m => m.Id == 1).Parameters;
-         * 	// params = new SqlParams { { "@p0", 1 } };
+         * 	// params = new Dictionary<string, object> { { "@p0", 1 } };
          * ```
          */
-        public Query.SqlParams Parameters
+        public Dictionary<string, object> Parameters
         {
             get
             {
@@ -103,11 +103,7 @@ namespace Graceful.Query
         public Linq(string tableName, Context Db, Query.Builder Qb = null)
         {
             this.Ctx = Db; this.TableName = tableName;
-
-            if (Qb != null)
-            {
-                this.DefiningQuery = Qb;
-            }
+            if (Qb != null) this.DefiningQuery = Qb;
         }
 
         /**
@@ -119,9 +115,9 @@ namespace Graceful.Query
         }
 
         /**
-         * Do all entities in the set pass the predicate?
+         * Do all entities in the set pass the SQL predicate?
          *
-         * ```
+         * ```cs
          * 	if (Models.Foo.All("Bar = {0}", "abc"))
          * 	{
          * 		// All Foo's have their Bar property set to abc
@@ -138,10 +134,10 @@ namespace Graceful.Query
         }
 
         /**
-         * Do all entities in the set pass the predicate?
+         * Do all entities in the set pass the expression?
          *
-         * ```
-         * 	if (Models.Foo.All(m => m.Bar == "abc"))
+         * ```cs
+         * 	if (Models.Foo.All(e => e.Bar == "abc"))
          * 	{
          * 		// All Foo's have their Bar property set to abc
          * 	}
@@ -159,10 +155,32 @@ namespace Graceful.Query
         }
 
         /**
+         * Do all entities in the set pass the dynamic string expression?
+         *
+         * ```cs
+         * 	if (Models.Foo.All("e => e.Bar == \"abc\""))
+         * 	{
+         * 		// All Foo's have their Bar property set to abc
+         * 	}
+         * 	else
+         * 	{
+         * 		// Not all Foo's have their Bar property set to abc
+         * 	}
+         * ```
+         */
+        public bool All(string predicate)
+        {
+            return this.All
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Are there any entities in the set at all?
          *
-         * ```
-         * 	if (Models.Foo.Where(m => m.Bar == "abc").Any())
+         * ```cs
+         * 	if (Models.Foo.Where(e => e.Bar == "abc").Any())
          * 	{
          * 		// The set contains at least one Foo.
          * 	}
@@ -182,9 +200,9 @@ namespace Graceful.Query
         }
 
         /**
-         * Do any entities in the set pass the predicate?
+         * Do any entities in the set pass the SQL predicate?
          *
-         * ```
+         * ```cs
          * 	if (Models.Foo.Any("Bar = {0}", "abc"))
          * 	{
          * 		// At least one Foo has it's Bar property set to abc
@@ -201,10 +219,10 @@ namespace Graceful.Query
         }
 
         /**
-         * Do any entities in the set pass the predicate?
+         * Do any entities in the set pass the expression?
          *
-         * ```
-         * 	if (Models.Foo.Any(m => m.Bar == "abc"))
+         * ```cs
+         * 	if (Models.Foo.Any(e => e.Bar == "abc"))
          * 	{
          * 		// At least one Foo has it's Bar property set to abc
          * 	}
@@ -222,9 +240,31 @@ namespace Graceful.Query
         }
 
         /**
-         * How many entities are there in the set?
+         * Do any entities in the set pass the dynamic string expression?
          *
+         * ```cs
+         * 	if (Models.Foo.Any("e => e.Bar == \"abc\""))
+         * 	{
+         * 		// At least one Foo has it's Bar property set to abc
+         * 	}
+         * 	else
+         * 	{
+         * 		// No Foo's have their Bar property set to abc
+         * 	}
          * ```
+         */
+        public bool Any(string predicate)
+        {
+            return this.Any
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
+         * Number of entities are there in the current set.
+         *
+         * ```cs
          * 	var numberOfEntities = Models.Foo.Count();
          * ```
          */
@@ -237,9 +277,9 @@ namespace Graceful.Query
         }
 
         /**
-         * How many entities are there in the set that match the predicate?
+         * Number of entities that match the SQL predicate.
          *
-         * ```
+         * ```cs
          * 	var numberOfEntities = Models.Foo.Count("Bar = {0}", "abc");
          * ```
          */
@@ -249,10 +289,10 @@ namespace Graceful.Query
         }
 
         /**
-         * How many entities are there in the set that match the predicate?
+         * Number of entities that match the expression.
          *
-         * ```
-         * 	var numberOfEntities = Models.Foo.Count(m => m.Bar == "abc");
+         * ```cs
+         * 	var numberOfEntities = Models.Foo.Count(e => e.Bar == "abc");
          * ```
          */
         public int Count(Expression<Func<TModel, bool>> predicate)
@@ -263,21 +303,39 @@ namespace Graceful.Query
         }
 
         /**
+         * Number of entities that match the dynamic string expression.
+         *
+         * ```cs
+         * 	var numberOfEntities = Models.Foo.Count("e => e.Bar == \"abc\"");
+         * ```
+         */
+        public int Count(string predicate)
+        {
+            return this.Count
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Returns the first entity of the set.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.First();
          * ```
          */
         public TModel First()
         {
-            return Model.Dynamic<TModel>().Hydrate(this.Take(1).DefiningQuery.Row);
+            return (TModel)Model.Dynamic<TModel>().Hydrate
+            (
+                this.Take(1).DefiningQuery.Row
+            );
         }
 
         /**
-         * Returns the first entity of the set that matches the predicate.
+         * Returns the first entity that matches the SQL predicate.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.First("Bar = {0}", "abc");
          * ```
          */
@@ -287,10 +345,10 @@ namespace Graceful.Query
         }
 
         /**
-         * Returns the first entity of the set that matches the predicate.
+         * Returns the first entity that matches the expression.
          *
-         * ```
-         * 	var entity = Models.Foo.First(m => m.Bar == "abc");
+         * ```cs
+         * 	var entity = Models.Foo.First(e => e.Bar == "abc");
          * ```
          */
         public TModel First(Expression<Func<TModel, bool>> predicate)
@@ -301,10 +359,25 @@ namespace Graceful.Query
         }
 
         /**
+         * Returns the first entity that matches the dynamic string expression.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.First("e => e.Bar == \"abc\"");
+         * ```
+         */
+        public TModel First(string predicate)
+        {
+            return this.First
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Returns the first element of the set,
          * or a default value if the set contains no elements.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.FirstOrDefault();
          * ```
          */
@@ -318,15 +391,15 @@ namespace Graceful.Query
             }
             else
             {
-                return Model.Dynamic<TModel>().Hydrate(record);
+                return (TModel)Model.Dynamic<TModel>().Hydrate(record);
             }
         }
 
         /**
-         * Returns the first element of the set that matches the predicate,
+         * Returns the first element of the set that matches the SQL predicate,
          * or a default value if the set contains no elements.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.FirstOrDefault("Bar = {0}", "abc");
          * ```
          */
@@ -336,11 +409,11 @@ namespace Graceful.Query
         }
 
         /**
-         * Returns the first element of the set that matches the predicate,
+         * Returns the first element of the set that matches the expression,
          * or a default value if the set contains no elements.
          *
-         * ```
-         * 	var entity = Models.Foo.FirstOrDefault(m => m.Bar == "abc");
+         * ```cs
+         * 	var entity = Models.Foo.FirstOrDefault(e => e.Bar == "abc");
          * ```
          */
         public TModel FirstOrDefault(Expression<Func<TModel, bool>> predicate)
@@ -351,24 +424,43 @@ namespace Graceful.Query
         }
 
         /**
+         * Returns the first element of the set that matches the dynamic string
+         * expression, or a default value if the set contains no elements.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.FirstOrDefault("e => e.Bar == \"abc\"");
+         * ```
+         */
+        public TModel FirstOrDefault(string predicate)
+        {
+            return this.FirstOrDefault
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Returns the only entity of the set. If the set contains no entities
          * or more than one entity then an exception will be thrown.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.Single();
          * ```
          */
         public TModel Single()
         {
-            return Model.Dynamic<TModel>().Hydrate(this.DefiningQuery.Rows.Single());
+            return (TModel)Model.Dynamic<TModel>().Hydrate
+            (
+                this.DefiningQuery.Rows.Single()
+            );
         }
 
         /**
-         * Returns the only entity of the set that matches the predicate.
+         * Returns the only entity of the set that matches the SQL predicate.
          * If the set contains no entities or more than one entity then an
          * exception will be thrown.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.Single("Bar = {0}", "abc");
          * ```
          */
@@ -378,12 +470,12 @@ namespace Graceful.Query
         }
 
         /**
-         * Returns the only entity of the set that matches the predicate.
+         * Returns the only entity of the set that matches the expression.
          * If the set contains no entities or more than one entity then an
          * exception will be thrown.
          *
-         * ```
-         * 	var entity = Models.Foo.Single(m => m.Bar == "abc");
+         * ```cs
+         * 	var entity = Models.Foo.Single(e => e.Bar == "abc");
          * ```
          */
         public TModel Single(Expression<Func<TModel, bool>> predicate)
@@ -394,11 +486,28 @@ namespace Graceful.Query
         }
 
         /**
+         * Returns the only entity of the set that matches the dynamic string
+         * expression. If the set contains no entities or more than one entity
+         * then an exception will be thrown.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.Single("e => e.Bar == \"abc\"");
+         * ```
+         */
+        public TModel Single(string predicate)
+        {
+            return this.Single
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Returns the only element of the set, or a default value if the set
          * is empty; this method throws an exception if there is more than one
          * element in the set.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.SingleOrDefault();
          * ```
          */
@@ -412,16 +521,16 @@ namespace Graceful.Query
             }
             else
             {
-                return Model.Dynamic<TModel>().Hydrate(record);
+                return (TModel)Model.Dynamic<TModel>().Hydrate(record);
             }
         }
 
         /**
-         * Returns the only element of the set that matches the predicate, or a
-         * default value if the set is empty; this method throws an exception
-         * if there is more than one element in the set.
+         * Returns the only element of the set that matches the SQL predicate,
+         * or a default value if the set is empty; this method throws an
+         * exception if there is more than one element in the set.
          *
-         * ```
+         * ```cs
          * 	var entity = Models.Foo.SingleOrDefault("Bar = {0}", "abc");
          * ```
          */
@@ -431,12 +540,12 @@ namespace Graceful.Query
         }
 
         /**
-         * Returns the only element of the set that matches the predicate, or a
-         * default value if the set is empty; this method throws an exception
-         * if there is more than one element in the set.
+         * Returns the only element of the set that matches the expression,
+         * or a default value if the set is empty; this method throws an
+         * exception if there is more than one element in the set.
          *
-         * ```
-         * 	var entity = Models.Foo.SingleOrDefault(m => m.Bar == "abc");
+         * ```cs
+         * 	var entity = Models.Foo.SingleOrDefault(e => e.Bar == "abc");
          * ```
          */
         public TModel SingleOrDefault(Expression<Func<TModel, bool>> predicate)
@@ -447,10 +556,27 @@ namespace Graceful.Query
         }
 
         /**
-         * Filters the set based on the predicate.
+         * Returns the only element of the set that matches the dynamic string
+         * expression, or a default value if the set is empty; this method
+         * throws an exception if there is more than one element in the set.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.SingleOrDefault("e => e.Bar == \"abc\"");
+         * ```
+         */
+        public TModel SingleOrDefault(string predicate)
+        {
+            return this.SingleOrDefault
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
+         * Filters the set based on the SQL predicate.
          * This does not return results but a new filtered Linq<TModel>.
          *
-         * ```
+         * ```cs
          * 	var filteredEntities = Models.Foo.Where("Bar = {0}", "abc");
          * ```
          */
@@ -465,11 +591,11 @@ namespace Graceful.Query
         }
 
         /**
-         * Filters the set based on the predicate.
+         * Filters the set based on the expression.
          * This does not return results but a new filtered Linq<TModel>.
          *
-         * ```
-         * 	var filteredEntities = Models.Foo.Where(m => m.Bar == "abc");
+         * ```cs
+         * 	var filteredEntities = Models.Foo.Where(e => e.Bar == "abc");
          * ```
          */
         public Linq<TModel> Where(Expression<Func<TModel, bool>> predicate)
@@ -480,12 +606,30 @@ namespace Graceful.Query
         }
 
         /**
-         * Filters the set based on the predicate, using sql LIKE clauses.
+         * Filters the set based on the dynamic string expression.
          * This does not return results but a new filtered Linq<TModel>.
          *
+         * ```cs
+         * 	var filteredEntities = Models.Foo.Where("e => e.Bar == \"abc\"");
          * ```
-         * 	var filteredEntities = Models.Foo.Like(m => m.Bar == "%abc%");
+         */
+        public Linq<TModel> Where(string predicate)
+        {
+            return this.Where
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
+         * Filters the set based on the expression, using sql LIKE clauses.
+         * This does not return results but a new filtered Linq<TModel>.
+         *
+         * ```cs
+         * 	var filteredEntities = Models.Foo.Like(e => e.Bar == "%abc%");
          * ```
+         *
+         * > NOTE: You may use ```!=``` for a NOT LIKE query.
          */
         public Linq<TModel> Like(Expression<Func<TModel, bool>> predicate)
         {
@@ -495,15 +639,34 @@ namespace Graceful.Query
         }
 
         /**
+         * Filters the set based on the dynamic string expression, using sql
+         * LIKE clauses. This does not return results but a new filtered
+         * Linq<TModel>.
+         *
+         * ```cs
+         * 	var filteredEntities = Models.Foo.Like("e => e.Bar == \"%abc%\"");
+         * ```
+         *
+         * > NOTE: You may use ```!=``` for a NOT LIKE query.
+         */
+        public Linq<TModel> Like(string predicate)
+        {
+            return this.Like
+            (
+                ExpressionBuilder.BuildPredicateExpression<TModel>(predicate)
+            );
+        }
+
+        /**
          * Orders the set based on the provided column list.
          *
-         * ```
+         * ```cs
          * 	var orderedEntities = Models.Foo.OrderBy("Bar DESC, Baz ASC");
          * ```
          *
          * Or even something like this:
          *
-         * ```
+         * ```cs
          * 	var orderedEntities = Models.Foo.OrderBy
          * 	(
          * 		"Bar {0}, Baz {1}",
@@ -525,12 +688,12 @@ namespace Graceful.Query
         }
 
         /**
-         * Orders the set based on the returned property.
+         * Orders the set based on the expression.
          *
-         * ```
+         * ```cs
          * 	var orderedEntities = Models.Foo
-         * 	.OrderBy(m => m.Bar, OrderDirection.DESC)
-         * 	.OrderBy(m => m.Baz, OrderDirection.ASC);
+         * 	.OrderBy(e => e.Bar, OrderDirection.DESC)
+         * 	.OrderBy(e => e.Baz, OrderDirection.ASC);
          * ```
          *
          * > NOTE: ASC is the default direction, if not supplied.
@@ -551,7 +714,28 @@ namespace Graceful.Query
 
             return this.OrderBy
             (
-                member.Member.Name + " " + direction.ToString()
+                new SqlId(member.Member.Name).Value + " " + direction.ToString(),
+                new object[] {}
+            );
+        }
+
+        /**
+         * Orders the set based on the dynamic string expression.
+         *
+         * ```cs
+         * 	var orderedEntities = Models.Foo
+         * 	.OrderBy("e => e.Bar", OrderDirection.DESC)
+         * 	.OrderBy("e => e.Baz", OrderDirection.ASC);
+         * ```
+         *
+         * > NOTE: ASC is the default direction, if not supplied.
+         */
+        public Linq<TModel> OrderBy(string predicate, OrderDirection direction = OrderDirection.ASC)
+        {
+            return this.OrderBy
+            (
+                ExpressionBuilder.BuildAssignmentExpression<TModel>(predicate),
+                direction
             );
         }
 
@@ -559,7 +743,7 @@ namespace Graceful.Query
          * Bypasses a specified number of entities in the set
          * and then returns the remaining entities.
          *
-         * ```
+         * ```cs
          * 	var first10EntitiesIgnored = Models.Foo.Skip(10);
          * ```
          */
@@ -577,7 +761,7 @@ namespace Graceful.Query
          * Returns a specified number of contiguous
          * entities from the start of the set.
          *
-         * ```
+         * ```cs
          * 	var IHave10Entities = Models.Foo.Take(10);
          * ```
          */
@@ -594,7 +778,7 @@ namespace Graceful.Query
         /**
          * Returns an array of entities.
          *
-         * ```
+         * ```cs
          * 	foreach (var entity in Models.Foo.ToArray())
          * 	{
          *
@@ -609,7 +793,7 @@ namespace Graceful.Query
         /**
          * Returns a List of entities.
          *
-         * ```
+         * ```cs
          * 	Models.Foo.ToList().ForEach(entity =>
          *  {
          *
@@ -618,13 +802,25 @@ namespace Graceful.Query
          */
         public List<TModel> ToList()
         {
-            return Model.Dynamic<TModel>().Hydrate(this.DefiningQuery.Rows);
+            var entities = Model.Dynamic<TModel>().Hydrate(this.DefiningQuery.Rows);
+
+            // Share the caches between each object graph
+            var CachedQueries = entities[0].CachedQueries;
+            var DiscoveredEntities = entities[0].DiscoveredEntities;
+
+            foreach (var entity in entities)
+            {
+                entity.CachedQueries = CachedQueries;
+                entity.DiscoveredEntities = DiscoveredEntities;
+            }
+
+            return entities;
         }
 
         /**
          * Returns a json serialisation of the entities.
          *
-         * ```
+         * ```cs
          * 	var json = Models.Foo.ToJson();
          * ```
          */
@@ -636,8 +832,8 @@ namespace Graceful.Query
         /**
          * Updates enMasse without first loading the entites into memory.
          *
-         * ```
-         * 	Models.Foo.Update("Bar = {0}, Baz = {1}", "abc", 123);
+         * ```cs
+         * 	Models.Foo.UpdateAll("Bar = {0}, Baz = {1}", "abc", 123);
          * ```
          *
          * > NOTE: You can only update the primative columns.
@@ -645,7 +841,7 @@ namespace Graceful.Query
          * > You may however update the relationship foreign key, assuming you
          * > know the name of the foreign key column.
          */
-        public void Update(string setClause, params object[] parameters)
+        public void UpdateAll(string setClause, params object[] parameters)
         {
             this.Ctx.Qb
             .UPDATE(this.DefiningQuery)
@@ -657,8 +853,8 @@ namespace Graceful.Query
         /**
          * Updates enMasse without first loading the entites into memory.
          *
-         * ```
-         * 	Models.Foo.Update(m => m.Bar == "abc" && m.Baz == 123);
+         * ```cs
+         * 	Models.Foo.UpdateAll(e => e.Bar == "abc" && e.Baz == 123);
          * ```
          *
          * > NOTE: This is NOT a "WHERE" predicate. The expression you provide
@@ -666,28 +862,48 @@ namespace Graceful.Query
          * > we parse it slightly diffrently. Consider each "&&" or "||" as a
          * > comma. And each "==" simply as a "=" operator.
          */
-        public void Update(Expression<Func<TModel, object>> assignments)
+        public void UpdateAll(Expression<Func<TModel, object>> assignments)
         {
             var converter = new AssignmentsConverter();
             converter.Visit(assignments.Body);
-            this.Update(converter.Sql, converter.Parameters);
+            this.UpdateAll(converter.Sql, converter.Parameters);
+        }
+
+        /**
+         * Updates enMasse using a dynamic string expression.
+         *
+         * ```cs
+         * 	Models.Foo.UpdateAll("e => e.Bar == \"abc\" && e.Baz == 123");
+         * ```
+         *
+         * > NOTE: This is NOT a "WHERE" predicate. The expression you provide
+         * > this Update method follows the same structure as a predicate but
+         * > we parse it slightly diffrently. Consider each "&&" or "||" as a
+         * > comma. And each "==" simply as a "=" operator.
+         */
+        public void UpdateAll(string assignments)
+        {
+            this.UpdateAll
+            (
+                ExpressionBuilder.BuildAssignmentExpression<TModel>(assignments)
+            );
         }
 
         /**
          * Deletes enMasse without first loading the entites into memory.
          *
-         * ```
+         * ```cs
          * 	// soft deletes all Foo's in the table!
-         * 	Models.Foo.Destroy();
+         * 	Models.Foo.DeleteAll();
          *
          * 	// soft deletes all Foo's that have Bar set to Baz
-         * 	Models.Foo.Where(m => m.Bar == "Baz").Destroy();
+         * 	Models.Foo.Where(e => e.Bar == "Baz").DeleteAll();
          *
-         * // hard deletes a Foo with the Id of 56
-         * Models.Foo.Where(m => m.Id == 56).Destroy(hardDelete: true);
+         * 	// hard deletes a Foo with the Id of 56
+         * 	Models.Foo.Where(e => e.Id == 56).DeleteAll(hardDelete: true);
          * ```
          */
-        public void Destroy(bool hardDelete = false)
+        public void DeleteAll(bool hardDelete = false)
         {
             if (hardDelete)
             {

@@ -18,7 +18,10 @@ namespace Graceful.Query
     using System.Data;
     using System.Data.SqlClient;
     using System.Collections.Generic;
+    using System.Security.Cryptography;
     using System.Text.RegularExpressions;
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Graceful.Extensions;
 
     public class Builder : Helper
@@ -80,18 +83,68 @@ namespace Graceful.Query
         /**
          * Public access to the current list of parameter values.
          */
-        public SqlParams Parameters
+        public Dictionary<string, object> Parameters
         {
             get
             {
-                var sqlparams = new SqlParams();
+                var sqlparams = new Dictionary<string, object>();
 
-                this.BufferValues.ForEachWithIndex
+                this.BufferValues.ForEach
                 (
                     (key, value) => sqlparams["@p" + key + "p"] = value
                 );
 
                 return sqlparams;
+            }
+        }
+
+        /**
+         *
+         */
+        public string Hash
+        {
+            get
+            {
+                // Lets compile the query into a string that we can then hash.
+                var queryString = new StringBuilder(this.Sql);
+                queryString.AppendLine();
+
+                this.BufferValues.ForEach((key, value) =>
+                {
+                    queryString.Append("@p" + key + "p => ");
+
+                    if (Utils.TypeMapper.IsClrType(value))
+                    {
+                        queryString.Append(value.ToString());
+                    }
+                    else
+                    {
+                        queryString.Append
+                        (
+                            // NOTE: We are not expecting any recursive
+                            // entities or the like here. Maybe an SqlId
+                            // SqlTable or SqlColumn class.
+                            JObject.FromObject
+                            (
+                                value,
+                                new JsonSerializer
+                                {
+                                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                                }
+                            ).ToString()
+                        );
+                    }
+
+                    queryString.AppendLine();
+                });
+
+                // We now have a string that represents
+                // the query that might be performed.
+                // Let create a hash of this string.
+                var hash = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(queryString.ToString()));
+                var sb = new StringBuilder();
+                for (int i = 0; i < hash.Length; i++) sb.Append(hash[i].ToString("x2"));
+                return sb.ToString();
             }
         }
 
@@ -241,11 +294,11 @@ namespace Graceful.Query
          * 	});
          * ```
          */
-        public List<SqlResult> Rows
+        public List<Dictionary<string, object>> Rows
         {
             get
             {
-                List<SqlResult> list;
+                List<Dictionary<string, object>> list;
 
                 using (DataTable dt = this.DataTable)
                 {
@@ -265,7 +318,7 @@ namespace Graceful.Query
          * 	var person = qb.SELECT("*").FROM("People").WHERE("Id = 10").Row;
          * ```
          */
-        public SqlResult Row
+        public Dictionary<string, object> Row
         {
             get
             {

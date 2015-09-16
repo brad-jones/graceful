@@ -10,7 +10,7 @@
 // =============================================================================
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace Graceful.ExpressionVisitors
+namespace Graceful.Utils.Visitors
 {
     using System;
     using System.Text;
@@ -21,27 +21,27 @@ namespace Graceful.ExpressionVisitors
     using Graceful.Utils;
 
     /**
-     * Given an Expression Tree, we will convert it into a SQL LIKE clause.
+     * Given an Expression Tree, we will convert it into a SQL SET clause.
      *
      * ```
      * 	Expression<Func<TModel, bool>> expression =
-     * 		m => m.Foo == "%Bar%" && m.Baz != "Q%x";
+     * 		m => m.FirstName == "Brad" && m.LastName == "Jones";
      *
-     * 	var converter = new LikeConverter();
+     * 	var converter = new AssignmentsConverter();
      * 	converter.Visit(expression.Body);
      *
-     * 	// converter.Sql == "Foo LIKE {0} AND Baz NOT LIKE {1}"
-     * 	// converter.Parameters == new object[] { "%Bar%", "Q%x" }
+     * 	// converter.Sql == "FirstName = {0}, LastName = {1}"
+     * 	// converter.Parameters == new object[] { "Brad", "Jones" }
      * ```
      */
-    public class LikeConverter : ExpressionVisitor
+    public class AssignmentsConverter : ExpressionVisitor
     {
         /**
-         * The portion of the SQL query that will come after a WHERE clause.
+         * The portion of the SQL query that will come after a SET clause.
          */
         public string Sql
         {
-            get { return this.sql.ToString().Trim();  }
+            get { return this.sql.ToString();  }
         }
 
         private StringBuilder sql = new StringBuilder();
@@ -72,27 +72,22 @@ namespace Graceful.ExpressionVisitors
 
         protected override Expression VisitBinary(BinaryExpression node)
         {
-            // Open the binary expression in SQL
-            this.sql.Append("(");
-
             // Go and visit the left hand side of this expression
             this.Visit(node.Left);
 
             // Add the operator in the middle
             switch (node.NodeType)
             {
-                case ExpressionType.Equal: this.sql.Append("LIKE"); break;
-                case ExpressionType.NotEqual: this.sql.Append("NOT LIKE"); break;
+                case ExpressionType.Equal:
+                    this.sql.Append("=");
+                break;
 
                 case ExpressionType.And:
                 case ExpressionType.AndAlso:
-                    this.sql.Append("AND");
-                    break;
-
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                    this.sql.Append("OR");
-                    break;
+                    this.sql.Append(",");
+                break;
 
                 default:
                     throw new Exception
@@ -106,9 +101,6 @@ namespace Graceful.ExpressionVisitors
 
             // Now visit the right hand side of this expression.
             this.Visit(node.Right);
-
-            // Close the binary expression in SQL
-            this.sql.Append(") ");
 
             return node;
         }

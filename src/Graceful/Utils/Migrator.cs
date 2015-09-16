@@ -1,3 +1,15 @@
+////////////////////////////////////////////////////////////////////////////////
+//           ________                                _____        __
+//          /  _____/_______ _____     ____   ____ _/ ____\__ __ |  |
+//         /   \  ___\_  __ \\__  \  _/ ___\_/ __ \\   __\|  |  \|  |
+//         \    \_\  \|  | \/ / __ \_\  \___\  ___/ |  |  |  |  /|  |__
+//          \______  /|__|   (____  / \___  >\___  >|__|  |____/ |____/
+//                 \/             \/      \/     \/
+// =============================================================================
+//           Designed & Developed by Brad Jones <brad @="bjc.id.au" />
+// =============================================================================
+////////////////////////////////////////////////////////////////////////////////
+
 namespace Graceful.Utils
 {
     using System;
@@ -95,6 +107,34 @@ namespace Graceful.Utils
         protected List<FkConstraint> _FkConstraints;
 
         /**
+         * Simple type to represent a unique column contraint.
+         */
+        protected struct UniqueConstraint
+        {
+            public string Table;
+            public string Column;
+        }
+
+        /**
+         * A list of unique column contraints to add
+         * after all tables have been created.
+         */
+        protected virtual List<UniqueConstraint> UniqueConstraints
+        {
+            get
+            {
+                if (this._UniqueConstraints == null)
+                {
+                    this._UniqueConstraints = new List<UniqueConstraint>();
+                }
+
+                return this._UniqueConstraints;
+            }
+        }
+
+        protected List<UniqueConstraint> _UniqueConstraints;
+
+        /**
          * Relationships have 2 sides, but they only have 1 backing schema.
          *
          * Consider if we create a pivot table for the relationship between
@@ -172,7 +212,7 @@ namespace Graceful.Utils
             // First lets drop all existing foreign key contraints.
             var DropContraints = new StringBuilder();
             this.Ctx.Qb.SELECT("*").FROM("INFORMATION_SCHEMA.TABLE_CONSTRAINTS")
-            .WHERE("{0} = {1}", new SqlId("CONSTRAINT_TYPE"), "FOREIGN KEY")
+            .WHERE("{0} = {1} OR {0} = {2}", new SqlId("CONSTRAINT_TYPE"), "FOREIGN KEY", "UNIQUE")
             .Rows.ForEach(fkC =>
             {
                 DropContraints.Append("ALTER TABLE ");
@@ -246,6 +286,21 @@ namespace Graceful.Utils
             {
                 this.Ctx.Qb.Execute(AddContraints.ToString());
             }
+
+            // Now re add all unique contraints
+            var UniqueContraints = new StringBuilder();
+            this.UniqueConstraints.Distinct().ToList().ForEach(uc =>
+            {
+                AddContraints.Append("ALTER TABLE ");
+                AddContraints.Append(new SqlId(this.Ctx.DatabaseName + ".dbo." + uc.Table).Value);
+                AddContraints.Append(" ADD UNIQUE (");
+                AddContraints.Append(new SqlId(uc.Column).Value);
+                AddContraints.Append(");\n");
+            });
+            if (UniqueContraints.Length > 0)
+            {
+                this.Ctx.Qb.Execute(UniqueContraints.ToString());
+            }
         }
 
         /**
@@ -291,6 +346,16 @@ namespace Graceful.Utils
                         else
                         {
                             query.Append(" NOT NULL");
+                        }
+
+                        // Is the column unique?
+                        if (this.IsUnique(prop))
+                        {
+                            this.UniqueConstraints.Add(new UniqueConstraint
+                            {
+                                Table = table,
+                                Column = prop.Name
+                            });
                         }
                     }
 
@@ -426,6 +491,16 @@ namespace Graceful.Utils
                         }
                     }
 
+                    // Is the column unique?
+                    if (this.IsUnique(prop))
+                    {
+                        this.UniqueConstraints.Add(new UniqueConstraint
+                        {
+                            Table = table,
+                            Column = prop.Name
+                        });
+                    }
+
                     // Next column
                     query.Append(";\n");
                 }
@@ -525,6 +600,10 @@ namespace Graceful.Utils
          */
         protected string GetColumnType(PropertyInfo prop)
         {
+            var sqlType = prop.GetCustomAttribute<SqlTypeAttribute>();
+
+            if (sqlType != null) return sqlType.Value.ToString().ToUpper();
+
             return TypeMapper.GetDBType(prop.PropertyType).ToString().ToUpper();
         }
 
@@ -536,26 +615,32 @@ namespace Graceful.Utils
          */
         protected string GetColumnLength(PropertyInfo prop)
         {
+            // Check for a custom length attribute
             var sqlLength = prop.GetCustomAttribute<SqlLengthAttribute>();
+            if (sqlLength != null) return sqlLength.Value;
 
-            if (sqlLength != null)
+            // Grab the SqlDbType
+            SqlDbType sqlType;
+            if (prop.GetCustomAttribute<SqlTypeAttribute>() != null)
             {
-                return sqlLength.Value;
+                sqlType = prop.GetCustomAttribute<SqlTypeAttribute>().Value;
             }
             else
             {
-                // Types that can have the max length
-                // option lets give it to them.
-                switch (TypeMapper.GetDBType(prop.PropertyType))
-                {
-                    case SqlDbType.VarChar:
-                    case SqlDbType.NVarChar:
-                    case SqlDbType.VarBinary:
-                        return "(MAX)";
+                sqlType = TypeMapper.GetDBType(prop.PropertyType);
+            }
 
-                    default:
-                        return "";
-                }
+            // Types that can have the max length
+            // option lets give it to them.
+            switch (sqlType)
+            {
+                case SqlDbType.VarChar:
+                case SqlDbType.NVarChar:
+                case SqlDbType.VarBinary:
+                    return "(MAX)";
+
+                default:
+                    return "";
             }
         }
 
@@ -584,6 +669,19 @@ namespace Graceful.Utils
         }
 
         /**
+         * Given a property work out if the property is set to be unique or not.
+         */
+        protected bool IsUnique(PropertyInfo prop)
+        {
+            if (prop.GetCustomAttribute<UniqueAttribute>(false) != null)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /**
          * When a Many to Many relationship is found, this will first check to
          * see if the Pivot Table already exists and if not we then create the
          * needed Pivot Table to support the relationship.
@@ -603,7 +701,7 @@ namespace Graceful.Utils
                     "\tCONSTRAINT @Contraint\n" +
                     "\tPRIMARY KEY (@Col1,@Col2)\n" +
                 ");",
-                new SqlParams
+                new Dictionary<string, object>
                 {
                     {"@TableName", new SqlId(this.Ctx.DatabaseName + ".dbo." + relation.PivotTableName)},
                     {"@Col1", new SqlId(relation.PivotTableFirstColumnName)},

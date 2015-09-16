@@ -366,8 +366,8 @@ namespace Graceful.Utils
          * Given a type, we will tell you if it is a nullable.
          *
          * ```cs
-         * 	int? Id = 0;
-         *  if (TypeMapper.IsNullable(Id)
+         * 	int? Id;
+         *  if (TypeMapper.IsNullable(typeof(Id))
          *  {
          *  	Console.WriteLine("Yep, its a nullable int.");
          *  }
@@ -386,14 +386,94 @@ namespace Graceful.Utils
             return false;
         }
 
+        /**
+         * Given a value, we will tell you if it is a nullable.
+         *
+         * ```cs
+         * 	int? Id = 0;
+         *  if (TypeMapper.IsNullable(Id)
+         *  {
+         *  	Console.WriteLine("Yep, its a nullable int.");
+         *  }
+         * ```
+         */
         public static bool IsNullable(object value)
         {
             return IsNullable(value.GetType());
         }
 
+        /**
+         * Given a PropertyInfo instance, we will tell you if the
+         * property type is nullable.
+         *
+         * ```cs
+         *  class Foo
+         *  {
+         *  	public int? Bar { get; set; }
+         *  }
+         *
+         *  if (TypeMapper.IsNullable(typeof(Foo).GetProperty("Bar"))
+         *  {
+         *  	Console.WriteLine("Yep, its a nullable int.");
+         *  }
+         * ```
+         */
         public static bool IsNullable(PropertyInfo property)
         {
             return IsNullable(property.PropertyType);
+        }
+
+        /**
+         * Given a Type, we will tell you if it is a Graceful Model.
+         *
+         * ```cs
+         * 	class Foo {}
+         * 	class Bar : Graceful.Model<Bar> {}
+         *
+         * 	TypeMapper.IsEntity(typeof(Foo)); // false
+         *  TypeMapper.IsEntity(typeof(Bar)); // true
+         * ```
+         */
+        public static bool IsEntity(Type type)
+        {
+            return type.IsSubclassOf(typeof(Model));
+        }
+
+        /**
+         * Tells you if the value is an instance of a Graceful Model.
+         *
+         * ```cs
+         * 	class Foo {}
+         * 	class Bar : Graceful.Model<Bar> {}
+         *
+         * 	TypeMapper.IsEntity(new Foo()); // false
+         *  TypeMapper.IsEntity(new Bar()); // true
+         * ```
+         */
+        public static bool IsEntity(object value)
+        {
+            return IsEntity(value.GetType());
+        }
+
+        /**
+         * Tells you if a property might contain an instance of a Graceful Model.
+         *
+         * ```cs
+         * 	class Qux :  Graceful.Model<Qux> {}
+         *
+         * 	class Foo : Graceful.Model<Foo>
+         * 	{
+         * 		public string Bar { get; set; }
+         * 		public Qux Baz { get; set; }
+         * 	}
+         *
+         * 	TypeMapper.IsEntity(typeof(Foo).GetProperty("Bar")); // false
+         *  TypeMapper.IsEntity(typeof(Foo).GetProperty("Baz")); // true
+         * ```
+         */
+        public static bool IsEntity(PropertyInfo property)
+        {
+            return IsEntity(property.PropertyType);
         }
 
         /**
