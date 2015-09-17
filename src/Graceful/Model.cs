@@ -3382,14 +3382,14 @@ namespace Graceful
             // Grab our class properties, that represent columns in the table.
             var props = MappedPropsExceptId;
 
-            bool INSERTING;
+            //bool INSERTING; dont need this anymore it seems.
             if (this.Id == 0)
             {
                 // We are INSERTING
                 // So Update both the created and modified times
                 this.CreatedAt = DateTime.UtcNow;
                 this.ModifiedAt = DateTime.UtcNow;
-                INSERTING = true;
+                //INSERTING = true;
                 if (!this.FireBeforeInsert()) return null;
             }
             else
@@ -3397,7 +3397,7 @@ namespace Graceful
                 // We are UPDATING
                 // So Update the modified time only.
                 this.ModifiedAt = DateTime.UtcNow;
-                INSERTING = false;
+                //INSERTING = false;
                 if (!this.FireBeforeUpdate()) return null;
             }
 
@@ -3569,21 +3569,18 @@ namespace Graceful
                 {
                     case RelationshipDiscoverer.Relation.RelationType.MtoM:
                     {
-                        var currentEntities = (value as IEnumerable<object>)
-                        .Cast<IModel<Model>>().ToList();
+                        var currentEntities = (value as IEnumerable<object>).Cast<IModel<Model>>().ToList();
+                        var originalEntities = (List<IModel<Model>>)this.OriginalPropertyBag[relation.LocalProperty.Name];
 
                         currentEntities.ForEach(e =>
                         {
                             if (!SavedEntities.Contains(e))
                             {
-                                bool FOREIGN_INSERTING = e.Id > 0 ? false : true;
-
                                 // Save the foreign side of the relationship
                                 e.Save(SavedEntities);
 
-                                // Only insert the new pivot table entry if one of
-                                // the entities was inserted and not updated.
-                                if (INSERTING || FOREIGN_INSERTING)
+                                // Only insert the pivot table entry if relationship is new.
+                                if (!originalEntities.Contains(e))
                                 {
                                     Db.Qb.INSERT_INTO(relation.PivotTableName)
                                     .COLS
@@ -3599,11 +3596,9 @@ namespace Graceful
 
                         // Remove any relationships from the
                         // pivot table that got removed.
-                        var originalEntities = (List<IModel<Model>>)
-                        this.OriginalPropertyBag[relation.LocalProperty.Name];
                         originalEntities.ForEach(originalEntity =>
                         {
-                            if (!currentEntities.Any(currentEntity => currentEntity.Id == originalEntity.Id))
+                            if (!currentEntities.Contains(originalEntity))
                             {
                                 Db.Qb.DELETE_FROM(relation.PivotTableName)
                                 .WHERE(relation.PivotTableSecondColumnName, originalEntity.Id)
@@ -3627,12 +3622,15 @@ namespace Graceful
 
                             e.Save(SavedEntities);
 
-                            if (relation.ForeignProperty == null)
+                            // In theroy this case should never happen again now
+                            // that we force both sides of the relationship to
+                            // be defined.
+                            /*if (relation.ForeignProperty == null)
                             {
                                 Db.Qb.UPDATE(relation.ForeignKeyTableName)
                                 .SET(relation.ForeignKeyColumnName, this.Id)
                                 .WHERE("Id", e.Id).Execute();
-                            }
+                            }*/
                         });
 
                         var originalEntities = (List<IModel<Model>>)
@@ -3640,7 +3638,7 @@ namespace Graceful
 
                         originalEntities.ForEach(originalEntity =>
                         {
-                            if (!currentEntities.Any(currentEntity => currentEntity.Id == originalEntity.Id))
+                            if (!currentEntities.Contains(originalEntity))
                             {
                                 Db.Qb.UPDATE(relation.ForeignKeyTableName)
                                 .SET(relation.ForeignKeyColumnName, null)
