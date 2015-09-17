@@ -1718,6 +1718,7 @@ namespace Graceful
                             case ListChangedType.ItemAdded:
                             case ListChangedType.ItemDeleted:
                             {
+                                throw new Exception("IS THIS WORKING...");
                                 this.FirePropertyChanged(prop);
                             }
                             break;
