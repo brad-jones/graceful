@@ -1058,7 +1058,7 @@ namespace Graceful
 
             // Bail out if we have been told not to load anything
             // from our discovered list or from the database.
-            if (!loadFromDiscovered && !loadFromDb)
+            if (!loadFromDiscovered || !loadFromDb)
             {
                 return default(T);
             }
@@ -1696,7 +1696,7 @@ namespace Graceful
             // new entities are added so that we may save those entities to our
             // discovered list.
             dynamic propertyBagValue;
-            if (value != null && TypeMapper.IsList(value) && value.GetType().GetGenericTypeDefinition() == typeof(List<>))
+            if (value != null && TypeMapper.IsList(value))
             {
                 dynamic bindingList = Activator.CreateInstance
                 (
@@ -1718,7 +1718,6 @@ namespace Graceful
                             case ListChangedType.ItemAdded:
                             case ListChangedType.ItemDeleted:
                             {
-                                throw new Exception("IS THIS WORKING...");
                                 this.FirePropertyChanged(prop);
                             }
                             break;
@@ -3485,7 +3484,7 @@ namespace Graceful
             }).ToList();
 
             // Only insert or update if we have something to insert or update.
-            if (insertableProps.Count > 0)
+            if (insertableProps.Count > 1)
             {
                 // Create an array of column names
                 var cols = insertableProps.Select(p =>
@@ -3724,6 +3723,31 @@ namespace Graceful
 
             // We have saved everything, so lets reset this list.
             this.ModifiedProps.Clear();
+
+            this._OriginalPropertyBag = null;
+
+            this.OriginalPropertyBag.Keys.ToList().ForEach(key =>
+            {
+                var value = this.Get<object>
+                (
+                    key, loadFromDiscovered: true, loadFromDb: false
+                );
+
+                if (value != null)
+                {
+                    if (TypeMapper.IsListOfEntities(value))
+                    {
+                        var clone = (value as IEnumerable<object>)
+                        .Cast<IModel<Model>>().ToList();
+
+                        this.OriginalPropertyBag[key] = clone;
+                    }
+                    else
+                    {
+                        this.OriginalPropertyBag[key] = value;
+                    }
+                }
+            });
 
             this.FireAfterSave();
 
