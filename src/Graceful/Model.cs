@@ -1711,7 +1711,7 @@ namespace Graceful
                 (
                     (sender, e) =>
                     {
-                        if (!triggerChangeEvent) return;
+                        //if (!triggerChangeEvent) return;
 
                         switch (e.ListChangedType)
                         {
@@ -3719,10 +3719,10 @@ namespace Graceful
                 }
             });
 
+            this.Id = (int)this.DbRecord["Id"];
+
             // We have saved everything, so lets reset this list.
             this.ModifiedProps.Clear();
-
-            this.Id = (int)this.DbRecord["Id"];
 
             this.FireAfterSave();
 
