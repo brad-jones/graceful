@@ -3483,7 +3483,14 @@ namespace Graceful
                     }
                     else
                     {
-                        return ((dynamic)value).Save(SavedEntities).Id;
+                        if (SavedEntities.Contains(value))
+                        {
+                            return (int)((dynamic)value).DbRecord["Id"];
+                        }
+                        else
+                        {
+                            return ((dynamic)value).Save(SavedEntities).Id;
+                        }
                     }
                 }).ToArray();
 
@@ -3681,7 +3688,7 @@ namespace Graceful
 
             // We have saved everything, so lets reset this list.
             this.ModifiedProps.Clear();
-            
+
             this.Id = (int)this.DbRecord["Id"];
 
             this.FireAfterSave();
