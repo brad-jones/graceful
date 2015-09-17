@@ -3509,18 +3509,18 @@ namespace Graceful
                     Db.Qb.INSERT_INTO(SqlTableName)
                     .COLS(cols).VALUES(values).Execute();
 
+                    // Set the DbRecord
+                    this.DbRecord = record;
+
                     // Grab the inserted id and update our model
+                    //
                     // NOTE: SCOPE_IDENTITY does not work because we need to make
                     // the query with the same connection instance or possibly even
                     // with in the same SqlCommand.
-                    this.Id = Convert.ToInt32
+                    this.DbRecord["Id"] = Convert.ToInt32
                     (
                         Db.Qb.SELECT("IDENT_CURRENT({0})", SqlTableName).Scalar
                     );
-
-                    // Set the DbRecord
-                    this.DbRecord = record;
-                    this.DbRecord["Id"] = this.Id;
 
                     this.FireAfterInsert();
                 }
@@ -3582,7 +3582,7 @@ namespace Graceful
                                 // Only insert the pivot table entry if relationship is new.
                                 if (!originalEntities.Contains(e))
                                 {
-                                    int firstId = this.Id;
+                                    int firstId = (int)this.DbRecord["Id"];
                                     if (!relation.PivotTableFirstColumnName.Contains(relation.LocalTableNameSingular))
                                     {
                                         firstId = e.Id;
@@ -3591,7 +3591,7 @@ namespace Graceful
                                     int secondId = e.Id;
                                     if (!relation.PivotTableSecondColumnName.Contains(relation.ForeignTableNameSingular))
                                     {
-                                        secondId = this.Id;
+                                        secondId = (int)this.DbRecord["Id"];
                                     }
 
                                     Db.Qb.INSERT_INTO(relation.PivotTableName)
@@ -3681,6 +3681,8 @@ namespace Graceful
 
             // We have saved everything, so lets reset this list.
             this.ModifiedProps.Clear();
+            
+            this.Id = (int)this.DbRecord["Id"];
 
             this.FireAfterSave();
 
