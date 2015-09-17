@@ -3582,13 +3582,25 @@ namespace Graceful
                                 // Only insert the pivot table entry if relationship is new.
                                 if (!originalEntities.Contains(e))
                                 {
+                                    int firstId = this.Id;
+                                    if (!relation.PivotTableFirstColumnName.Contains(relation.LocalTableNameSingular))
+                                    {
+                                        firstId = e.Id;
+                                    }
+
+                                    int secondId = e.Id;
+                                    if (!relation.PivotTableSecondColumnName.Contains(relation.ForeignTableNameSingular))
+                                    {
+                                        secondId = this.Id;
+                                    }
+
                                     Db.Qb.INSERT_INTO(relation.PivotTableName)
                                     .COLS
                                     (
                                         relation.PivotTableFirstColumnName,
                                         relation.PivotTableSecondColumnName
                                     )
-                                    .VALUES(this.Id, e.Id)
+                                    .VALUES(firstId, secondId)
                                     .Execute();
                                 }
                             }
@@ -3596,12 +3608,18 @@ namespace Graceful
 
                         // Remove any relationships from the
                         // pivot table that got removed.
+                        var columnName = relation.PivotTableSecondColumnName;
+                        if (!relation.PivotTableSecondColumnName.Contains(relation.ForeignTableNameSingular))
+                        {
+                            columnName = relation.PivotTableFirstColumnName;
+                        }
+
                         originalEntities.ForEach(originalEntity =>
                         {
                             if (!currentEntities.Contains(originalEntity))
                             {
                                 Db.Qb.DELETE_FROM(relation.PivotTableName)
-                                .WHERE(relation.PivotTableSecondColumnName, originalEntity.Id)
+                                .WHERE(columnName, originalEntity.Id)
                                 .Execute();
                             }
                         });
