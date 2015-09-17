@@ -1677,7 +1677,7 @@ namespace Graceful
 
             // If the property does not already have
             // a value, set it's original value.
-            if (this.Hydrated && EqualityComparer<T>.Default.Equals(this.Get<T>(propName, loadFromDiscovered: false, loadFromDb: false), default(T)))
+            if (this.Hydrated && this.Get<object>(propName, loadFromDiscovered: false, loadFromDb: false) == null)
             {
                 if (value != null && TypeMapper.IsListOfEntities(value))
                 {
