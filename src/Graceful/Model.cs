@@ -3646,10 +3646,16 @@ namespace Graceful
 
                         // Remove any relationships from the
                         // pivot table that got removed.
-                        var columnName = relation.PivotTableSecondColumnName;
+                        string col1 = relation.PivotTableFirstColumnName;
+                        if (!relation.PivotTableFirstColumnName.Contains(relation.LocalTableNameSingular))
+                        {
+                            col1 = relation.PivotTableSecondColumnName;
+                        }
+
+                        string col2 = relation.PivotTableSecondColumnName;
                         if (!relation.PivotTableSecondColumnName.Contains(relation.ForeignTableNameSingular))
                         {
-                            columnName = relation.PivotTableFirstColumnName;
+                            col2 = relation.PivotTableFirstColumnName;
                         }
 
                         originalEntities.ForEach(originalEntity =>
@@ -3657,7 +3663,8 @@ namespace Graceful
                             if (!currentEntities.Contains(originalEntity))
                             {
                                 Db.Qb.DELETE_FROM(relation.PivotTableName)
-                                .WHERE(columnName, originalEntity.Id)
+                                .WHERE(col1, (int)this.DbRecord["Id"])
+                                .WHERE(col2, originalEntity.Id)
                                 .Execute();
                             }
                         });
