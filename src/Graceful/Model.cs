@@ -308,7 +308,43 @@ namespace Graceful
          * removed.
          */
         [JsonIgnore]
-        public Dictionary<string, object> OriginalPropertyBag { get; protected set; }
+        public Dictionary<string, object> OriginalPropertyBag
+        {
+            get
+            {
+                if (this._OriginalPropertyBag == null)
+                {
+                    this._OriginalPropertyBag = new Dictionary<string, object>();
+
+                    MappedProps.ForEach(prop =>
+                    {
+                        if (TypeMapper.IsList(prop.PropertyType))
+                        {
+                            this._OriginalPropertyBag[prop.Name] =
+                            Activator.CreateInstance
+                            (
+                                typeof(List<>).MakeGenericType
+                                (
+                                    prop.PropertyType.GenericTypeArguments[0]
+                                )
+                            );
+                        }
+                        else if (prop.PropertyType.IsValueType)
+                        {
+                            this._OriginalPropertyBag[prop.Name] = Activator
+                            .CreateInstance(prop.PropertyType);
+                        }
+                        else
+                        {
+                            this._OriginalPropertyBag[prop.Name] = null;
+                        }
+                    });
+                }
+
+                return this._OriginalPropertyBag;
+            }
+        }
+        private Dictionary<string, object> _OriginalPropertyBag;
 
         /**
          * When an entity is first hydrated from the database, we will save the
@@ -1641,13 +1677,8 @@ namespace Graceful
 
             // If the property does not already have
             // a value, set it's original value.
-            if (this.Get<T>(propName, loadFromDiscovered: false, loadFromDb: false) == null)
+            if (this.Hydrated && !EqualityComparer<T>.Default.Equals(this.Get<T>(propName, loadFromDiscovered: false, loadFromDb: false), default(T)))
             {
-                if (this.OriginalPropertyBag == null)
-                {
-                    this.OriginalPropertyBag = new Dictionary<string, object>();
-                }
-
                 if (value != null && TypeMapper.IsListOfEntities(value))
                 {
                     var clone = (value as IEnumerable<object>)
@@ -1743,6 +1774,8 @@ namespace Graceful
             // Create the new entity
             var entity = new TModel();
 
+            entity.Hydrated = true;
+
             // Save the record to the entity.
             // We do this so that we may quickly look up any
             // foreign keys when and if the time comes.
@@ -1758,8 +1791,6 @@ namespace Graceful
                     entity.Set(col.Value, col.Key, triggerChangeEvent: false);
                 }
             }
-
-            entity.Hydrated = true;
 
             // NOTE: Relationships are loaded as they are requested.
 
