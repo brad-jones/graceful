@@ -3608,7 +3608,7 @@ namespace Graceful
                     case RelationshipDiscoverer.Relation.RelationType.MtoM:
                     {
                         var currentEntities = (value as IEnumerable<object>).Cast<IModel<Model>>().ToList();
-                        var originalEntities = (List<IModel<Model>>)this.OriginalPropertyBag[relation.LocalProperty.Name];
+                        var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();//(List<IModel<Model>>)this.OriginalPropertyBag[relation.LocalProperty.Name];
 
                         currentEntities.ForEach(e =>
                         {
@@ -3689,8 +3689,10 @@ namespace Graceful
                             }*/
                         });
 
-                        var originalEntities = (List<IModel<Model>>)
-                        this.OriginalPropertyBag[relation.LocalProperty.Name];
+                        //var originalEntities = (List<IModel<Model>>)
+                        //this.OriginalPropertyBag[relation.LocalProperty.Name];
+
+                        var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();
 
                         originalEntities.ForEach(originalEntity =>
                         {
