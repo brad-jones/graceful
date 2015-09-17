@@ -433,7 +433,6 @@ namespace Graceful.Query
                 {
                     this.Db.LogWriter.WriteLine("-- !!!NEXT QUERY ERRORED!!!");
                     this.Db.LogWriter.WriteLine(cmd.ToTraceString());
-                    Console.WriteLine(this.Db.Log);
                 }
 
                 throw;
