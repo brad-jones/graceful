@@ -291,11 +291,11 @@ namespace Graceful.Utils
             var UniqueContraints = new StringBuilder();
             this.UniqueConstraints.Distinct().ToList().ForEach(uc =>
             {
-                AddContraints.Append("ALTER TABLE ");
-                AddContraints.Append(new SqlId(this.Ctx.DatabaseName + ".dbo." + uc.Table).Value);
-                AddContraints.Append(" ADD UNIQUE (");
-                AddContraints.Append(new SqlId(uc.Column).Value);
-                AddContraints.Append(");\n");
+                UniqueContraints.Append("ALTER TABLE ");
+                UniqueContraints.Append(new SqlId(this.Ctx.DatabaseName + ".dbo." + uc.Table).Value);
+                UniqueContraints.Append(" ADD UNIQUE (");
+                UniqueContraints.Append(new SqlId(uc.Column).Value);
+                UniqueContraints.Append(");\n");
             });
             if (UniqueContraints.Length > 0)
             {
