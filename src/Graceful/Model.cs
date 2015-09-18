@@ -1311,13 +1311,16 @@ namespace Graceful
             // entity or entities from our discovered list, then the last place
             // to look is obviously the database. However if we ourselves do not
             // have an Id then we can not possibly have any related entities.
-            if (!this.PropertyBag.ContainsKey("Id")) return default(T);
+            if (!this.PropertyBag.ContainsKey("Id") || !this.Hydrated)
+            {
+                return default(T);
+            }
 
             // Okay so we have an Id but are we actually hydrated.
             // ie: We havn't just been newed up and given an Id manually.
             // We won't do a full hydration but we will load our DbRecord so
             // that we may look up our relations below.
-            if (this.DbRecord == null)
+            /*if (this.DbRecord == null)
             {
                 if (relation.Type == RelationType.OtoM || relation.Type == RelationType.OtoO)
                 {
@@ -1337,7 +1340,7 @@ namespace Graceful
 
                     this.DbRecord = records.Single();
                 }
-            }
+            }*/
 
             switch (relation.Type)
             {
@@ -3798,53 +3801,81 @@ namespace Graceful
         {
             MappedPropsExceptId.ForEach(p =>
             {
-                // We can only deal with primative types.
-                if (!TypeMapper.IsClrType(p.PropertyType)) return;
-
-                // Do not copy the CreatedAt, ModifiedAt timestamps.
+                // Never copy the CreatedAt, ModifiedAt timestamps.
                 if (p.Name == "CreatedAt" || p.Name == "ModifiedAt") return;
 
                 // If the updated entity has a null value, we will skip to the
                 // next property and leave the existing property value as is.
                 if (p.GetValue(updated) == null) return;
 
-                // Copy the property value
-                p.SetValue(existing, p.GetValue(updated));
+                // Copy the property value, if simple primative.
+                if (TypeMapper.IsClrType(p.PropertyType))
+                {
+                    p.SetValue(existing, p.GetValue(updated));
+                }
 
-                // NOTE: We can not recursively merge relationships because
-                // we have no generic way of comparing entities. For example
-                // consider this:
-                //
-                // Foo.UpdateOrCreate(e => e.Bar == "Baz", new Foo
-                // {
-                //      Bar = "abc",
-                //      Qux = new FooBar
-                //      {
-                //          Abc = 123
-                //      }
-                // });
-                //
-                // The above says find me a Foo where Bar equals Baz.
-                // If so lets update it, we set Bar to abc, easy enough.
-                // But then we get to Qux, how do we find the existing
-                // FooBar entity? The only way we could compare is with
-                // an Id but the new FooBar does not have an Id.
-                //
-                // This is actaully how something like this should probably be
-                // done:
-                //
-                // Foo.UpdateOrCreate(e => e.Bar == "Baz", new Foo
-                // {
-                //      Bar = "abc",
-                //      Qux = FooBar.MergeOrNew
-                //      (
-                //          e => e.Abc == 1234,
-                //          new FooBar
-                //          {
-                //              Abc = 123
-                //          }
-                //      )
-                // });
+                // Merge the entity but only if it has an Id.
+                else if (TypeMapper.IsEntity(p.PropertyType))
+                {
+                    var dModel = Dynamic(p.PropertyType);
+                    var updatedEntity = p.GetValue(updated);
+                    var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
+
+                    if (updatedEntityId > 0)
+                    {
+                        var existingEntity = dModel.Find(updatedEntityId);
+
+                        if (existingEntity != null)
+                        {
+                            var mergedEntity = dModel.InvokeStatic
+                            (
+                                "MergeModels", updatedEntity, existingEntity
+                            );
+
+                            p.SetValue(existing, mergedEntity);
+                        }
+                    }
+                }
+
+                // Merge the entities but again only if they have Id's.
+                else if (TypeMapper.IsListOfEntities(p.PropertyType))
+                {
+                    var dModel = Dynamic(p.PropertyType.GenericTypeArguments[0]);
+                    var updatedEntities = p.GetValue(updated) as IEnumerable<object>;
+                    dynamic mergedEntities = Activator.CreateInstance
+                    (
+                        typeof(List<>).MakeGenericType
+                        (
+                            p.PropertyType.GenericTypeArguments[0]
+                        )
+                    );
+
+                    foreach (var updatedEntity in updatedEntities)
+                    {
+                        var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
+
+                        if (updatedEntityId > 0)
+                        {
+                            var existingEntity = dModel.Find(updatedEntityId);
+
+                            if (existingEntity != null)
+                            {
+                                var mergedEntity = dModel.InvokeStatic
+                                (
+                                    "MergeModels", updatedEntity, existingEntity
+                                );
+
+                                mergedEntities.Add(mergedEntity);
+                            }
+                        }
+                        else
+                        {
+                            mergedEntities.Add(updatedEntity);
+                        }
+                    }
+
+                    p.SetValue(existing, mergedEntities);
+                }
             });
 
             return existing;
