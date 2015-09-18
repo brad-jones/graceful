@@ -3846,7 +3846,7 @@ namespace Graceful
                 {
                     var dModel = Dynamic(p.PropertyType.GenericTypeArguments[0]);
                     var updatedEntities = p.GetValue(updated) as IEnumerable<object>;
-                    dynamic mergedEntities = Activator.CreateInstance
+                    IList<object> mergedEntities = (IList<object>)Activator.CreateInstance
                     (
                         typeof(List<>).MakeGenericType
                         (
