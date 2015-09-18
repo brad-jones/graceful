@@ -29,6 +29,7 @@ namespace Graceful
     using System.Runtime.CompilerServices;
     using System.ComponentModel.DataAnnotations;
     using ExpressionBuilder = Graceful.Dynamic.ExpressionBuilder;
+    using RelationType = Graceful.Utils.RelationshipDiscoverer.Relation.RelationType;
 
     public class Model
     {
@@ -1098,7 +1099,7 @@ namespace Graceful
                 {
                     switch (relation.Type)
                     {
-                        case RelationshipDiscoverer.Relation.RelationType.MtoM:
+                        case RelationType.MtoM:
                         {
                             // We can only load from our discovered entities if
                             // we ourselves do not exist in the database yet.
@@ -1152,7 +1153,7 @@ namespace Graceful
                         }
                         break;
 
-                        case RelationshipDiscoverer.Relation.RelationType.MtoO:
+                        case RelationType.MtoO:
                         {
                             if (this.Id == 0)
                             {
@@ -1201,7 +1202,7 @@ namespace Graceful
                         }
                         break;
 
-                        case RelationshipDiscoverer.Relation.RelationType.OtoM:
+                        case RelationType.OtoM:
                         {
                             var entity = (T)discovered.SingleOrDefault(e =>
                             {
@@ -1250,7 +1251,7 @@ namespace Graceful
                         }
                         break;
 
-                        case RelationshipDiscoverer.Relation.RelationType.OtoO:
+                        case RelationType.OtoO:
                         {
                             var entity = (T)discovered.SingleOrDefault(e =>
                             {
@@ -1312,9 +1313,35 @@ namespace Graceful
             // have an Id then we can not possibly have any related entities.
             if (!this.PropertyBag.ContainsKey("Id")) return default(T);
 
+            // Okay so we have an Id but are we actually hydrated.
+            // ie: We havn't just been newed up and given an Id manually.
+            // We won't do a full hydration but we will load our DbRecord so
+            // that we may look up our relations below.
+            if (this.Hydrated == false)
+            {
+                if (relation.Type == RelationType.OtoM || relation.Type == RelationType.OtoO)
+                {
+                    var query = Db.Qb.SELECT("*").FROM(SqlTableName).WHERE("Id", this.Id);
+                    var queryHash = query.Hash;
+                    List<Dictionary<string, object>> records;
+
+                    if (this.CachedQueries.ContainsKey(queryHash))
+                    {
+                        records = this.CachedQueries[queryHash];
+                    }
+                    else
+                    {
+                        records = query.Rows;
+                        this.CachedQueries[queryHash] = records;
+                    }
+
+                    this.DbRecord = records.Single();
+                }
+            }
+
             switch (relation.Type)
             {
-                case RelationshipDiscoverer.Relation.RelationType.MtoM:
+                case RelationType.MtoM:
                 {
                     // Swap the column names around depending on which
                     // side of the relationship we are looking up.
@@ -1394,7 +1421,7 @@ namespace Graceful
                 }
                 break;
 
-                case RelationshipDiscoverer.Relation.RelationType.MtoO:
+                case RelationType.MtoO:
                 {
                     // Grab the entities
                     var query = Db.Qb
@@ -1455,7 +1482,7 @@ namespace Graceful
                 }
                 break;
 
-                case RelationshipDiscoverer.Relation.RelationType.OtoM:
+                case RelationType.OtoM:
                 {
                     if (this.DbRecord.ContainsKey(relation.ForeignKeyColumnName))
                     {
@@ -1511,7 +1538,7 @@ namespace Graceful
                 }
                 break;
 
-                case RelationshipDiscoverer.Relation.RelationType.OtoO:
+                case RelationType.OtoO:
                 {
                     if (relation.ForeignKeyTableName == relation.LocalTableName)
                     {
@@ -3456,22 +3483,22 @@ namespace Graceful
                 // Take action based on the relationship type.
                 switch (relation.Type)
                 {
-                    case RelationshipDiscoverer.Relation.RelationType.MtoM:
+                    case RelationType.MtoM:
 
                         // the foreign key exists in a pivot table.
                         return false;
 
-                    case RelationshipDiscoverer.Relation.RelationType.MtoO:
+                    case RelationType.MtoO:
 
                         // the foreign key exists in the foreign table.
                         return false;
 
-                    case RelationshipDiscoverer.Relation.RelationType.OtoM:
+                    case RelationType.OtoM:
 
                         // the foreign key exists in this table.
                         return true;
 
-                    case RelationshipDiscoverer.Relation.RelationType.OtoO:
+                    case RelationType.OtoO:
 
                         // the foreign key may exist in this table
                         // or in the foreign table, we need to find out.
@@ -3605,7 +3632,7 @@ namespace Graceful
                 // Take action based on the relationship type.
                 switch (relation.Type)
                 {
-                    case RelationshipDiscoverer.Relation.RelationType.MtoM:
+                    case RelationType.MtoM:
                     {
                         var currentEntities = (value as IEnumerable<object>).Cast<IModel<Model>>().ToList();
                         var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();//(List<IModel<Model>>)this.OriginalPropertyBag[relation.LocalProperty.Name];
@@ -3671,7 +3698,7 @@ namespace Graceful
                     }
                     break;
 
-                    case RelationshipDiscoverer.Relation.RelationType.MtoO:
+                    case RelationType.MtoO:
                     {
                         var currentEntities = (value as IEnumerable<object>)
                         .Cast<IModel<Model>>().ToList();
@@ -3713,14 +3740,14 @@ namespace Graceful
                     }
                     break;
 
-                    case RelationshipDiscoverer.Relation.RelationType.OtoO:
+                    case RelationType.OtoO:
 
                         ((IModel<Model>)value).Set(this, relation.ForeignProperty.Name);
                         ((IModel<Model>)value).Save(SavedEntities);
 
                     break;
 
-                    case RelationshipDiscoverer.Relation.RelationType.OtoM:
+                    case RelationType.OtoM:
 
                         throw new Exception("OtoM - don't think we should ever get here....");
                 }
@@ -3755,6 +3782,8 @@ namespace Graceful
                     }
                 }
             });
+
+            this.Hydrated = true;
 
             this.FireAfterSave();
 
