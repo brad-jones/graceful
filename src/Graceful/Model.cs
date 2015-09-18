@@ -3797,8 +3797,10 @@ namespace Graceful
          * A private helper method to merge 2 entities together.
          * We use this in the UpdateOrCreate methods.
          */
-        public static TModel MergeModels(TModel updated, TModel existing)
+        public static TModel MergeModels(TModel updated, TModel existing, List<object> MergedEntities = null)
         {
+            if (MergedEntities == null) MergedEntities = new List<object>();
+
             MappedPropsExceptId.ForEach(p =>
             {
                 // Never copy the CreatedAt, ModifiedAt timestamps.
