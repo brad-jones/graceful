@@ -3800,6 +3800,8 @@ namespace Graceful
         public static TModel MergeModels(TModel updated, TModel existing, List<object> MergedEntities = null)
         {
             if (MergedEntities == null) MergedEntities = new List<object>();
+            if (MergedEntities.Contains(updated) || MergedEntities.Contains(existing)) return existing;
+            MergedEntities.Add(updated); MergedEntities.Add(existing);
 
             MappedPropsExceptId.ForEach(p =>
             {
@@ -3831,7 +3833,7 @@ namespace Graceful
                         {
                             var mergedEntity = dModel.InvokeStatic
                             (
-                                "MergeModels", updatedEntity, existingEntity
+                                "MergeModels", updatedEntity, existingEntity, MergedEntities
                             );
 
                             p.SetValue(existing, mergedEntity);
@@ -3864,7 +3866,7 @@ namespace Graceful
                             {
                                 var mergedEntity = dModel.InvokeStatic
                                 (
-                                    "MergeModels", updatedEntity, existingEntity
+                                    "MergeModels", updatedEntity, existingEntity, MergedEntities
                                 );
 
                                 mergedEntities.Add(mergedEntity);
