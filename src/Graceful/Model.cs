@@ -3810,7 +3810,7 @@ namespace Graceful
 
                 // If the updated entity has a null value, we will skip to the
                 // next property and leave the existing property value as is.
-                if (p.GetValue(updated) == null) return;
+                if (updated.Get<object>(p.Name) == null) return;
 
                 // Copy the property value, if simple primative.
                 if (TypeMapper.IsClrType(p.PropertyType))
@@ -3846,7 +3846,7 @@ namespace Graceful
                 {
                     var dModel = Dynamic(p.PropertyType.GenericTypeArguments[0]);
                     var updatedEntities = p.GetValue(updated) as IEnumerable<object>;
-                    IList<object> mergedEntities = (IList<object>)Activator.CreateInstance
+                    dynamic mergedEntities = Activator.CreateInstance
                     (
                         typeof(List<>).MakeGenericType
                         (
@@ -3874,7 +3874,7 @@ namespace Graceful
                         }
                         else
                         {
-                            mergedEntities.Add(updatedEntity);
+                            mergedEntities.Add((dynamic)updatedEntity);
                         }
                     }
 
