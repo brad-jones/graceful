@@ -1317,7 +1317,7 @@ namespace Graceful
             // ie: We havn't just been newed up and given an Id manually.
             // We won't do a full hydration but we will load our DbRecord so
             // that we may look up our relations below.
-            if (this.Hydrated == false)
+            if (this.DbRecord == null)
             {
                 if (relation.Type == RelationType.OtoM || relation.Type == RelationType.OtoO)
                 {
@@ -3783,7 +3783,7 @@ namespace Graceful
                 }
             });
 
-            this.Hydrated = true;
+            // this.Hydrated = true; okay i think this buggers some other stuff up
 
             this.FireAfterSave();
 
