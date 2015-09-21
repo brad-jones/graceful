@@ -182,23 +182,46 @@ namespace Graceful
      * 	}
      * ```
      *
-     * Results in the following table schema:
+     * Effectively results in the following table schema:
      * ```sql
      * 	CREATE TABLE Foo
      * 	(
-     * 		Bar NVARCHAR(MAX)
+     * 		Bar NVARCHAR(MAX) UNIQUE
      * 	);
-     *
-     * 	ALTER TABLE Foo ADD UNIQUE (Bar);
      * ```
      *
-     * > NOTE: The migrator drops and re-creates _"ALL"_ contraints to ensure
-     * > the correct contraints arer in place in the case the migration ran on
-     * > an existing database.
+     * In typcial Microsoft fashion SQL Server does not support the standard
+     * ANSI UNIQUE logic. By default SQL Server treats "NULL" as a value and
+     * thus you can only have a single "NULL" value in your unique column.
+     * For more info on this see: http://dba.stackexchange.com/questions/80514
+     *
+     * So Graceful will actually create a _"Filtered"_ unique index for you.
+     * if you really do want to stick with Microsoft's definition of unique
+     * you may set the struct value to true.
+     *
+     * ```cs
+     *  using Graceful;
+     *
+     * 	public class Foo : Model<Foo>
+     * 	{
+     * 		[Unique(strict: true)]
+     * 		public string Bar { get; set; }
+     * 	}
+     * ```
+     *
+     * > NOTE: This won;t actually create a traditional UNIQUE contraint.
+     * > It will just create an _"UnFiltered"_ UNIQUE INDEX, behind the scenes
+     * > I imagine this is all a UNIQUE contraint would do anyway.
      */
     [AttributeUsage(AttributeTargets.Property)]
     public class UniqueAttribute : Attribute
     {
+        public readonly bool Strict;
+
+        public UniqueAttribute(bool strict = false)
+        {
+            this.Strict = strict;
+        }
     }
 
     /**

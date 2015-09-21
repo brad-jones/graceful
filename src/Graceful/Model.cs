@@ -1204,7 +1204,7 @@ namespace Graceful
 
                         case RelationType.OtoM:
                         {
-                            var entity = (T)discovered.SingleOrDefault(e =>
+                            var entities = discovered.Where(e =>
                             {
                                 var foreignEntity = (IModel<Model>)e;
 
@@ -1237,16 +1237,39 @@ namespace Graceful
                                 return foreignValue.Contains(this);
                             });
 
-                            if (entity != null)
+                            if (entities.Count() > 0)
                             {
-                                this.Set(entity, propName, false);
+                                object entity = null;
 
-                                return this.Get<T>
-                                (
-                                    propName,
-                                    loadFromDiscovered: false,
-                                    loadFromDb: false
-                                );
+                                if (entities.Count() == 1)
+                                {
+                                    entity = entities.First();
+                                }
+                                else
+                                {
+                                    // In some cases it is possible that we end
+                                    // up with 2 versions of our entity that
+                                    // have been discovered. A version that does
+                                    // not exist in the Db and a version that
+                                    // does, we will always take the version
+                                    // that came directly from the db.
+                                    entity = entities.SingleOrDefault
+                                    (
+                                        e => ((IModel<Model>)e).Id > 0
+                                    );
+                                }
+
+                                if (entity != null)
+                                {
+                                    this.Set(entity, propName, false);
+
+                                    return this.Get<T>
+                                    (
+                                        propName,
+                                        loadFromDiscovered: false,
+                                        loadFromDb: false
+                                    );
+                                }
                             }
                         }
                         break;
@@ -1889,7 +1912,7 @@ namespace Graceful
                     }
                 }
             }
-            else
+            else if (TypeMapper.IsEntity(value))
             {
                 if (!this.DiscoveredEntities.Contains(value))
                 {

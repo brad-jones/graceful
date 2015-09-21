@@ -113,6 +113,7 @@ namespace Graceful.Utils
         {
             public string Table;
             public string Column;
+            public bool Strict;
         }
 
         /**
@@ -169,7 +170,9 @@ namespace Graceful.Utils
         {
             this.Ctx = Ctx;
 
-            this.DropAllContraints();
+            // These will get re-created/added once the schema has been updated.
+            this.DropForeignKeyContraints();
+            this.DropAllIndexes();
 
             // Loop through all models in the context.
             this.Ctx.Models.ForEach(model =>
@@ -197,22 +200,52 @@ namespace Graceful.Utils
                 this.Ctx.Qb.Execute(query.ToString());
             });
 
-            // All all deferred foreign key contraints
+            // Re-add our indexes and contraints
             this.CreateAllDeferredForeignKeys();
+            this.CreateUniqueIndexes();
         }
 
         /**
+         * Drops all "GRACEFUL_" created indexes.
+         *
+         * Any indexes created manually or by Sql Server
+         * it's self will not be touched.
+         */
+        protected virtual void DropAllIndexes()
+        {
+            var DropIndexes = new StringBuilder();
+            this.Ctx.Qb
+            .SELECT("Idx.name AS INDEX_NAME, Obj.name AS TABLE_NAME")
+            .FROM("{0} AS Idx", new SqlTable(this.Ctx, "sys.indexes"))
+            .JOIN("{0} AS Obj ON Idx.object_id = Obj.object_id", new SqlTable(this.Ctx, "sys.all_objects"))
+            .WHERE("Idx.name IS NOT NULL AND Idx.name LIKE 'GRACEFUL_%'")
+            .Rows.ForEach(result =>
+            {
+                DropIndexes.Append("DROP INDEX ");
+                DropIndexes.Append(new SqlId(result["INDEX_NAME"] as string).Value);
+                DropIndexes.Append(" ON ");
+                DropIndexes.Append(new SqlTable(this.Ctx, result["TABLE_NAME"] as string).Value);
+                DropIndexes.Append(";\n");
+            });
+            if (DropIndexes.Length > 0)
+            {
+                this.Ctx.Qb.Execute(DropIndexes.ToString());
+            }
+        }
+
+        /**
+         * Drops all Foreign Key Contraints.
+         *
          * Before migrating we drop all existing foreign key contraints.
          * This is so that we may remove old columns, if DataLossAllowed
          * is set to true. And so we can ensure only relvent contraints
          * exist after the migration has run.
          */
-        protected virtual void DropAllContraints()
+        protected virtual void DropForeignKeyContraints()
         {
-            // First lets drop all existing foreign key contraints.
             var DropContraints = new StringBuilder();
             this.Ctx.Qb.SELECT("*").FROM("INFORMATION_SCHEMA.TABLE_CONSTRAINTS")
-            .WHERE("{0} = {1} OR {0} = {2}", new SqlId("CONSTRAINT_TYPE"), "FOREIGN KEY", "UNIQUE")
+            .WHERE("{0} = {1}", new SqlId("CONSTRAINT_TYPE"), "FOREIGN KEY")
             .Rows.ForEach(fkC =>
             {
                 DropContraints.Append("ALTER TABLE ");
@@ -286,20 +319,47 @@ namespace Graceful.Utils
             {
                 this.Ctx.Qb.Execute(AddContraints.ToString());
             }
+        }
 
-            // Now re add all unique contraints
-            var UniqueContraints = new StringBuilder();
+        /**
+         * Creates Unique Indexes for properties that have the Unique Attribute.
+         *
+         * Because SQL Server supports an odd "non-standard" UNIQUE contraint
+         * where multiple NULL values are not allowed we create our own
+         * "Filtered" indexes.
+         *
+         * see: http://dba.stackexchange.com/questions/80514
+         *
+         * > NOTE: A strict unique3 index may still be created by supplying
+         * > strict=true to the Unique Attribute.
+         */
+        protected virtual void CreateUniqueIndexes()
+        {
+            var UniqueIndexes = new StringBuilder();
+
             this.UniqueConstraints.Distinct().ToList().ForEach(uc =>
             {
-                UniqueContraints.Append("ALTER TABLE ");
-                UniqueContraints.Append(new SqlId(this.Ctx.DatabaseName + ".dbo." + uc.Table).Value);
-                UniqueContraints.Append(" ADD UNIQUE (");
-                UniqueContraints.Append(new SqlId(uc.Column).Value);
-                UniqueContraints.Append(");\n");
+                UniqueIndexes.Append("CREATE UNIQUE INDEX ");
+                UniqueIndexes.Append(new SqlId("GRACEFUL_UNIQUE_INDEX_" + uc.Table + "_" + uc.Column).Value);
+                UniqueIndexes.Append(" ON ");
+                UniqueIndexes.Append(new SqlTable(this.Ctx, uc.Table).Value);
+                UniqueIndexes.Append("(");
+                UniqueIndexes.Append(new SqlId(uc.Column).Value);
+                UniqueIndexes.Append(")");
+
+                if (uc.Strict == false)
+                {
+                    UniqueIndexes.Append(" WHERE ");
+                    UniqueIndexes.Append(new SqlId(uc.Column).Value);
+                    UniqueIndexes.Append(" IS NOT NULL");
+                }
+
+                UniqueIndexes.Append(";\n");
             });
-            if (UniqueContraints.Length > 0)
+
+            if (UniqueIndexes.Length > 0)
             {
-                this.Ctx.Qb.Execute(UniqueContraints.ToString());
+                this.Ctx.Qb.Execute(UniqueIndexes.ToString());
             }
         }
 
@@ -354,7 +414,8 @@ namespace Graceful.Utils
                             this.UniqueConstraints.Add(new UniqueConstraint
                             {
                                 Table = table,
-                                Column = prop.Name
+                                Column = prop.Name,
+                                Strict = prop.GetCustomAttribute<UniqueAttribute>(false).Strict
                             });
                         }
                     }
@@ -497,7 +558,8 @@ namespace Graceful.Utils
                         this.UniqueConstraints.Add(new UniqueConstraint
                         {
                             Table = table,
-                            Column = prop.Name
+                            Column = prop.Name,
+                            Strict = prop.GetCustomAttribute<UniqueAttribute>(false).Strict
                         });
                     }
 
