@@ -13,17 +13,13 @@
 namespace Graceful.Utils
 {
     using System;
-    using System.Xml;
     using System.Text;
     using System.Linq;
     using System.Data;
+    using Graceful.Query;
     using System.Reflection;
-    using System.Data.SqlClient;
-    using System.Collections;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
-    using Inflector;
-    using Graceful.Query;
 
     public class Migrator
     {
@@ -37,7 +33,7 @@ namespace Graceful.Utils
          * However in a staging environment you may like to allow these columns
          * to be deleted while the application is under heavy development.
          *
-         * ```
+         * ```cs
          * 	Graceful.Utils.Migrator.DataLossAllowed = true;
          * ```
          */
@@ -164,7 +160,7 @@ namespace Graceful.Utils
         protected List<PropertyInfo> _DealtWithRelationships;
 
         /**
-         * Lets inject some dependencies.
+         * A valid Graceful Context must be injected here.
          */
         public Migrator(Context Ctx)
         {

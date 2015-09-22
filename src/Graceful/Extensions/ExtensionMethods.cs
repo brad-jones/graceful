@@ -35,7 +35,7 @@ namespace Graceful.Extensions
         /**
          * A Linq`ish way of breaking out of a ForEach.
          *
-         * ```
+         * ```cs
          * 	var fooList = new List<string>{ "abc", "xyz" };
          *
          * 	fooList.ForEach(value =>
@@ -66,7 +66,7 @@ namespace Graceful.Extensions
         /**
          * A Linq`ish way of iterating over an Enumerable with an index.
          *
-         * ```
+         * ```cs
          * 	var fooList = new List<string>{ "abc", "xyz" };
          *
          * 	fooList.ForEach((key, value) =>
@@ -89,7 +89,7 @@ namespace Graceful.Extensions
         /**
          * A Linq`ish way of breaking out of a ForEach.
          *
-         * ```
+         * ```cs
          * 	var fooList = new List<string>{ "abc", "xyz" };
          *
          * 	fooList.ForEach((key, value) =>
@@ -122,7 +122,7 @@ namespace Graceful.Extensions
          * Creates a string representation of the command
          * for logging and debugging purposes.
          *
-         * ```
+         * ```cs
          * 	var cmd = new SqlCommand(query, connection);
          * 	var trace = cmd.ToTraceString();
          * ```

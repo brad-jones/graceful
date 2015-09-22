@@ -14,11 +14,10 @@ namespace Graceful.Utils.Visitors
 {
     using System;
     using System.Text;
+    using Graceful.Query;
     using System.Reflection;
     using System.Linq.Expressions;
     using System.Collections.Generic;
-    using Graceful.Query;
-    using Graceful.Utils;
 
     /**
      * Given an Expression Tree, we will convert it into a SQL LIKE clause.
@@ -95,10 +94,7 @@ namespace Graceful.Utils.Visitors
                     break;
 
                 default:
-                    throw new Exception
-                    (
-                        "Operator Not Known => " + node.NodeType
-                    );
+                    throw new UnknownOperatorException(node.NodeType);
             }
 
             // Operator needs a space after it.
@@ -187,12 +183,7 @@ namespace Graceful.Utils.Visitors
                 }
                 else
                 {
-                    throw new Exception
-                    (
-                        "Expression has too much recursion for the converter " +
-                        "to handle, consider using the string.format method " +
-                        "instead of the predicate method you just called."
-                    );
+                    throw new ExpressionTooComplexException();
                 }
             }
 

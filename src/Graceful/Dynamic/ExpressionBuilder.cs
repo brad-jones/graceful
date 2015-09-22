@@ -21,6 +21,23 @@ namespace Graceful.Dynamic
 
     public static class ExpressionBuilder
     {
+        /**
+         * Given a string, we create an Expression, to be used as a predicate.
+         *
+         * ```cs
+         * 	using Graceful.Dynamic;
+         *
+         * 	Expression<Func<T, bool>> compliedExpression =
+         * 		e => e.Id == 1;
+         *
+         * 	Expression<Func<T, bool>> builtExpression =
+         * 		ExpressionBuilder.BuildPredicateExpression<Foo>("e.Id == 1");
+         *
+         * 	compliedExpression == builtExpression
+         * ```
+         *
+         * > NOTE: You must always use the parameter of _"e"_.
+         */
         public static Expression<Func<T, bool>> BuildPredicateExpression<T>(string expression)
         {
             return (Expression<Func<T, bool>>)DynamicExpression.ParseLambda
@@ -31,6 +48,25 @@ namespace Graceful.Dynamic
             );
         }
 
+        /**
+         * Given a string, we create an Expression, to be used for assignments.
+         *
+         * ```cs
+         * 	using Graceful.Dynamic;
+         *
+         * 	Expression<Func<T, object>> compliedExpression =
+         * 		e => e.CreatedAt;
+         *
+         * 	Expression<Func<T, object>> builtExpression =
+         * 		ExpressionBuilder.BuildPredicateExpression<Foo>("e.CreatedAt");
+         *
+         * 	// compliedExpression == builtExpression
+         *
+         * 	Foo.Where(e => e.Bar == "Baz").OrderBy(builtExpression).ToList();
+         * ```
+         *
+         * > NOTE: Use the term assignment losely...
+         */
         public static Expression<Func<T, object>> BuildAssignmentExpression<T>(string expression)
         {
             return (Expression<Func<T, object>>)DynamicExpression.ParseLambda
@@ -41,6 +77,31 @@ namespace Graceful.Dynamic
             );
         }
 
+        /**
+         * Create an expression that checks for equality of all properties.
+         *
+         * ```cs
+         * 	using Graceful.Dynamic;
+         *
+         * 	var e2 = new Foo
+         * 	{
+         * 		Bar = "abc",
+         * 		Baz = 123
+         * 	};
+         *
+         * 	Expression<Func<T, bool>> compliedExpression =
+         * 		e1 => e1.Bar == e2.Bar && e1.Baz == e2.Baz;
+         *
+         * 	Expression<Func<T, bool>> builtExpression =
+         * 		ExpressionBuilder.BuildEqualityExpression<Foo>(e2);
+         *
+         * 	// compliedExpression == builtExpression
+         * ```
+         *
+         * > NOTE: Some properties are excluded from the equality check,
+         * > such as Id, CreatedAt, ModifiedAt & DeletedAt. Also beaware
+         * > only primatives are checked, relationships are completely ignored.
+         */
         public static Expression<Func<T, bool>> BuildEqualityExpression<T>(T e2) where T : Model<T>, new()
         {
             var expressionString = new StringBuilder();

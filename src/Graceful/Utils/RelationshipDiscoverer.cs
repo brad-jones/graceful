@@ -13,12 +13,10 @@
 namespace Graceful.Utils
 {
     using System;
+    using Inflector;
     using System.Linq;
     using System.Reflection;
     using System.Collections.Generic;
-    using Inflector;
-    using Graceful.Utils;
-    using Newtonsoft.Json.Linq;
 
     public class RelationshipDiscoverer
     {
@@ -168,11 +166,7 @@ namespace Graceful.Utils
                         {
                             if ((relation = this.IsManyToOne(prop)) == null)
                             {
-                                throw new Exception
-                                (
-                                    "Unknown Relationship (#1) Local Property - " +
-                                    JObject.FromObject(prop).ToString()
-                                );
+                                throw new UnknownRelationshipException(prop);
                             }
                         }
                     }
@@ -183,22 +177,14 @@ namespace Graceful.Utils
                         // TypeMapper has failed us.
                         if (!prop.PropertyType.IsSubclassOf(typeof(Model)))
                         {
-                            throw new Exception
-                            (
-                                "Unknown Relationship (#2) Local Property - " +
-                                JObject.FromObject(prop).ToString()
-                            );
+                            throw new UnknownRelationshipException(prop);
                         }
 
                         if ((relation = this.IsOneToMany(prop)) == null)
                         {
                             if ((relation = this.IsOneToOne(prop)) == null)
                             {
-                                throw new Exception
-                                (
-                                    "Unknown Relationship (#3) Local Property - " +
-                                    JObject.FromObject(prop).ToString()
-                                );
+                                throw new UnknownRelationshipException(prop);
                             }
                         }
                     }

@@ -61,31 +61,6 @@ namespace Graceful.Dynamic
             ).Invoke(null, args);
         }
 
-        /*public dynamic InvokeStatic(string methodName, Dictionary<string, object> args)
-        {
-            var argList = args.ToList();
-
-            return this.ModelType.InvokeMember
-            (
-                methodName,
-                BindingFlags.InvokeMethod |
-                BindingFlags.FlattenHierarchy |
-                BindingFlags.Public |
-                BindingFlags.Static,
-                null,
-                null,
-                argList.Select (d => d.Value).ToArray(),
-                null,
-                null,
-                argList.Select (d => d.Key).ToArray()
-            );
-        }*/
-
-        /*public T InvokeStatic<T>(string methodName, Dictionary<string, object> args)
-        {
-            return (T)this.InvokeStatic(methodName, args);
-        }*/
-
         public T InvokeStatic<T>(string methodName, params object[] args)
         {
             return (T)this.InvokeStatic(methodName, args);

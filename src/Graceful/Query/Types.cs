@@ -17,6 +17,15 @@ namespace Graceful.Query
     using System.Data.SqlClient;
 
     /**
+     * Used by the OrderBy methods in Query.Linq
+     */
+    public enum OrderDirection
+    {
+        ASC,
+        DESC
+    }
+
+    /**
      * An SqlId is a identifier used in an Sql Query, such as a table name
      * or column name. This enables us to use "variable" or "parametized"
      * identifiers with the Query Helper and Builder.

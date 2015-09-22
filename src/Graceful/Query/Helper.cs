@@ -15,11 +15,10 @@ namespace Graceful.Query
     using System;
     using System.Linq;
     using System.Data;
-    using System.Data.SqlClient;
-    using System.Linq.Expressions;
-    using System.Collections.Generic;
     using Graceful.Utils;
     using Graceful.Extensions;
+    using System.Data.SqlClient;
+    using System.Collections.Generic;
 
     public class Helper
     {
@@ -40,7 +39,7 @@ namespace Graceful.Query
         /**
          * Builds a new SqlCommand ready to be executed.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	var cmd = helper.BuildCmd
@@ -91,7 +90,7 @@ namespace Graceful.Query
         /**
          * Returns a new SqlDataReader for your query.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	using (var reader = helper.Read("SELECT * FROM Foo"))
@@ -115,7 +114,7 @@ namespace Graceful.Query
         /**
          * Returns a loaded DataTable with your Query Results.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	using (var dt = helper.ReadToDt("SELECT * FROM Bar"))
@@ -146,7 +145,7 @@ namespace Graceful.Query
         /**
          * Returns the scalar result of your query.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	var id = helper.ReadToScalar("SELECT id FROM foo WHERE x=y");
@@ -170,7 +169,7 @@ namespace Graceful.Query
          * Executes your query which acts on the db but does not query it.
          * Eg: Inserting, Updating, Deleting, etc
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	var rowsEffected = helper.Execute("DELETE FROM foo WHERE x=y");
@@ -193,7 +192,7 @@ namespace Graceful.Query
         /**
          * Returns a list, where each row is represented by a Dictionary.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	helper.GetRows("SELECT * FROM People").ForEach(row =>
@@ -220,7 +219,7 @@ namespace Graceful.Query
         /**
          * Returns the first row of a result set represented by a Dictionary.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	var person = helper.GetRow("SELECT * FROM People WHERE Id = 10");
@@ -234,7 +233,7 @@ namespace Graceful.Query
         /**
          * Check to see if the table exists in the database.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	if (helper.TableExists("FooBar"))
@@ -265,7 +264,7 @@ namespace Graceful.Query
         /**
          * Check to see if the table is empty or not.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	if (helper.TableEmpty("FooBar"))
@@ -293,7 +292,7 @@ namespace Graceful.Query
         /**
          * Check to see if a column exists in a given table.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	if (helper.ColumnExists("FooBar", "Baz"))
@@ -326,7 +325,7 @@ namespace Graceful.Query
         /**
          * Returns the current SqlDbType of the given column.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var helper = new Query.Helper(ctx);
          * 	var type = helper.ColumnDataType("FooBar", "Baz");

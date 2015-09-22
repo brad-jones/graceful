@@ -919,7 +919,4 @@ namespace Graceful.Query
             }
         }
     }
-
-    // Used by one of our OrderBy Overloads
-    public enum OrderDirection { ASC, DESC }
 }

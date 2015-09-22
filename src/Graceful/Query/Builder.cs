@@ -16,13 +16,12 @@ namespace Graceful.Query
     using System.Text;
     using System.Linq;
     using System.Data;
+    using Newtonsoft.Json;
+    using Graceful.Extensions;
+    using Newtonsoft.Json.Linq;
     using System.Data.SqlClient;
     using System.Collections.Generic;
     using System.Security.Cryptography;
-    using System.Text.RegularExpressions;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
-    using Graceful.Extensions;
 
     public class Builder : Helper
     {
@@ -99,7 +98,7 @@ namespace Graceful.Query
         }
 
         /**
-         *
+         * Returns are hash of the current _"built"_ query, helpful for caching.
          */
         public string Hash
         {
@@ -151,7 +150,7 @@ namespace Graceful.Query
         /**
          * Fluent version of BuildCmd.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	var cmd = qb
@@ -172,7 +171,7 @@ namespace Graceful.Query
         /**
          * Fluent version of Read.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	using (var reader = qb.SELECT("*").FROM("Foo").Reader)
@@ -199,7 +198,7 @@ namespace Graceful.Query
         /**
          * Fluent version of ReadToDt.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	using (var dt = qb.SELECT("*").FROM("Bar").DataTable)
@@ -233,7 +232,7 @@ namespace Graceful.Query
         /**
          * Fluent version ReadToScalar.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	var id = qb.SELECT("id").FROM("foo").WHERE("x=y").Scalar;
@@ -259,7 +258,7 @@ namespace Graceful.Query
         /**
          * Fluent version of Execute.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	var rowsEffected = qb.DELETE_FROM("foo").WHERE("x=y").Execute();
@@ -282,7 +281,7 @@ namespace Graceful.Query
         /**
          * Fluent version of GetRows.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	qb.SELECT("*").FROM("People").Rows.ForEach(row =>
@@ -312,7 +311,7 @@ namespace Graceful.Query
         /**
          * Fluent version of GetRow.
          *
-         * ```
+         * ```cs
          * 	var ctx = new Context();
          * 	var qb = new QueryBuilder(ctx);
          * 	var person = qb.SELECT("*").FROM("People").WHERE("Id = 10").Row;
@@ -716,8 +715,8 @@ namespace Graceful.Query
         /**
          * Appends a list of columns to an INSERT INTO clause.
          *
-         * ```
-         * 	INSERT_INTO("Foo").COLS("name", "age");
+         * ```cs
+         * 	Qb.INSERT_INTO("Foo").COLS("name", "age");
          * ```
          */
         public Builder COLS(params object[] args)
@@ -736,8 +735,8 @@ namespace Graceful.Query
         /**
          * Appends a list of values to an INSERT INTO clause.
          *
-         * ```
-         * 	INSERT_INTO("Foo").VALUES("Bar", "Baz");
+         * ```cs
+         * 	Qb.INSERT_INTO("Foo").VALUES("Bar", "Baz");
          * ```
          */
         public Builder VALUES(params object[] args)
@@ -840,8 +839,8 @@ namespace Graceful.Query
         /**
          * Appends multiple SET clause's using the provided Dictionary.
          *
-         * ```
-         * 	UPDATE("Foo").SET
+         * ```cs
+         * 	Qb.UPDATE("Foo").SET
          * 	(
          * 		new Dictionary<string, object>
          * 		{

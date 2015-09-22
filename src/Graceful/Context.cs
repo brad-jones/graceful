@@ -319,7 +319,8 @@ namespace Graceful
                     (
                         new JsonSerializerSettings
                         {
-                            PreserveReferencesHandling = PreserveReferencesHandling.Objects
+                            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                            ReferenceLoopHandling = ReferenceLoopHandling.Serialize
                         }
                     );
                 }

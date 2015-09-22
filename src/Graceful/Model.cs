@@ -307,6 +307,9 @@ namespace Graceful
          * When a property is first set, we store a shallow clone of the value.
          * Used in the _"Save"_ method to determin what relationships should be
          * removed.
+         *
+         * > NOTE: Combine this with a Before and AfterSave event,
+         * > makes for simple change detection.
          */
         [JsonIgnore]
         public Dictionary<string, object> OriginalPropertyBag
@@ -315,7 +318,12 @@ namespace Graceful
             {
                 if (this._OriginalPropertyBag == null)
                 {
-                    this._OriginalPropertyBag = new Dictionary<string, object>();
+                    // Here we create _"THE"_ original property bag.
+                    // Think about it the original values of all properties are
+                    // their defaults. Lists are initialised so we don't have to
+                    // check for null, we can just loop over an empty list.
+
+                    this._OriginalPropertyBag = new Dictionary<string,object>();
 
                     MappedProps.ForEach(prop =>
                     {
@@ -385,7 +393,7 @@ namespace Graceful
         /**
          * A list of all entities that we already know about. We will do our
          * best to always load directly for this list if we can. This is NOT a
-         * GLOBAL cache but a LOCAL cache unique the current graph.
+         * GLOBAL cache but a LOCAL cache unique to the current graph.
          *
          * ```cs
          * 	var foo1 = Foo.Find(1);
@@ -408,6 +416,7 @@ namespace Graceful
             {
                 if (this._DiscoveredEntities == null)
                 {
+                    // Add ourselves to the discovered list.
                     this._DiscoveredEntities = new List<object>{ this };
                 }
 
@@ -439,6 +448,29 @@ namespace Graceful
          * 	var foos = Foo.Where(f => f.Bar == "baz").ToList();
          * 	// foos[1].CachedQueries == foos[2].CachedQueries
          * ```
+         *
+         * This may seem crazy considering we already have a discovered entities
+         * list, I promise its not. Loading from discovered entities can only
+         * be done in certian circumstances. Consider the following thought
+         * experiment:
+         *
+         * 		- We load a Customer Entity.
+         *
+         * 		- A Customer has 2 lists of Products.
+         * 		  The first list is their purchased products.
+         * 		  The second list is all products that they returned.
+         *
+         * 		- Lets say we load the returned products list.
+         * 		  While we have some of the purchased products list
+         * 		  we don't have all of it.
+         *
+         * 		- Thus we have to ask the database.
+         *
+         * 		- Cached quriers really becomes helpful in circular reference
+         * 		  situations. Consider those Products have a relationship of all
+         * 		  Customers that bought that product.
+         *
+         * 		- Eventually we end up loading the Customer we started with.
          */
         [NotMapped]
         [JsonIgnore]
@@ -1339,32 +1371,6 @@ namespace Graceful
                 return default(T);
             }
 
-            // Okay so we have an Id but are we actually hydrated.
-            // ie: We havn't just been newed up and given an Id manually.
-            // We won't do a full hydration but we will load our DbRecord so
-            // that we may look up our relations below.
-            /*if (this.DbRecord == null)
-            {
-                if (relation.Type == RelationType.OtoM || relation.Type == RelationType.OtoO)
-                {
-                    var query = Db.Qb.SELECT("*").FROM(SqlTableName).WHERE("Id", this.Id);
-                    var queryHash = query.Hash;
-                    List<Dictionary<string, object>> records;
-
-                    if (this.CachedQueries.ContainsKey(queryHash))
-                    {
-                        records = this.CachedQueries[queryHash];
-                    }
-                    else
-                    {
-                        records = query.Rows;
-                        this.CachedQueries[queryHash] = records;
-                    }
-
-                    this.DbRecord = records.Single();
-                }
-            }*/
-
             switch (relation.Type)
             {
                 case RelationType.MtoM:
@@ -1912,7 +1918,7 @@ namespace Graceful
                     }
                 }
             }
-            else if (TypeMapper.IsEntity(value))
+            else
             {
                 if (!this.DiscoveredEntities.Contains(value))
                 {
@@ -2639,11 +2645,36 @@ namespace Graceful
             }
         }
 
+        /**
+         * Given a Dict we will first check to see if a similar entity exists
+         * in the database. If it does we will return that instance. If not we
+         * will create a new instance for you.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.SingleOrCreate
+         * 	(
+         * 		new Dictionary<string, object>
+         * 		{
+         * 			{"Bar", "abc"},
+         * 			{"Baz", 123}
+         * 		}
+         * 	);
+         * ```
+         */
         public static TModel SingleOrCreate(Dictionary<string, object> record)
         {
             return SingleOrCreate(Hydrate(record));
         }
 
+        /**
+         * Given a json string we will first check to see if a similar entity
+         * exists in the database. If it does we will return that instance.
+         * If not we will create a new instance for you.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.SingleOrCreate("{...JSON...}");
+         * ```
+         */
         public static TModel SingleOrCreate(string json)
         {
             return SingleOrCreate(FromJson(json));
@@ -2660,6 +2691,8 @@ namespace Graceful
          * 	user.BirthYear = 2001;
          * 	user.Save();
          * ```
+         *
+         * > NOTE: This can be handy when merging object graphs manually.
          */
         public static TModel SingleOrNew(TModel entity)
         {
@@ -2679,11 +2712,45 @@ namespace Graceful
             }
         }
 
+        /**
+         * Similar to SingleOrCreate except we do not add the new instance
+         * to the database. We simply return the model you passed in.
+         * It is then on you to call Save() on that model if you wish to
+         * add it to the db.
+         *
+         * ```cs
+         * 	var user = Model.User.SingleOrNew
+         * 	(
+         * 		new Dictionary<string, object>
+         * 		{
+         * 			{"Name", "Fred"}
+         * 		}
+         * 	);
+         * 	user.BirthYear = 2001;
+         * 	user.Save();
+         * ```
+         *
+         * > NOTE: This can be handy when merging object graphs manually.
+         */
         public static TModel SingleOrNew(Dictionary<string, object> record)
         {
             return SingleOrNew(Hydrate(record));
         }
 
+        /**
+         * Similar to SingleOrCreate except we do not add the new instance
+         * to the database. We simply return the model you passed in.
+         * It is then on you to call Save() on that model if you wish to
+         * add it to the db.
+         *
+         * ```cs
+         * 	var user = Model.User.SingleOrNew("{...JSON...}");
+         * 	user.BirthYear = 2001;
+         * 	user.Save();
+         * ```
+         *
+         * > NOTE: This can be handy when merging object graphs manually.
+         */
         public static TModel SingleOrNew(string json)
         {
             return SingleOrNew(FromJson(json));
@@ -2717,11 +2784,39 @@ namespace Graceful
             }
         }
 
+        /**
+         * Given a Dict we will first check to see if there are any similar
+         * entities that exist in the database. If there are 1 or more entities
+         * that are similar to the provided we will return the first in the set.
+         * If there are no similar entities we will save the provided entity
+         * and return it.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.FirstOrCreate
+         * 	(
+         * 		new Dictionary<string, object>
+         * 		{
+         * 			{"Bar", "abc"}
+         * 		}
+         * 	);
+         * ```
+         */
         public static TModel FirstOrCreate(Dictionary<string, object> record)
         {
             return FirstOrCreate(Hydrate(record));
         }
 
+        /**
+         * Given some json we will first check to see if there are any similar
+         * entities that exist in the database. If there are 1 or more entities
+         * that are similar to the provided we will return the first in the set.
+         * If there are no similar entities we will save the provided entity
+         * and return it.
+         *
+         * ```cs
+         * 	var entity = Models.Foo.FirstOrCreate("{...JSON...}");
+         * ```
+         */
         public static TModel FirstOrCreate(string json)
         {
             return FirstOrCreate(FromJson(json));
@@ -2757,11 +2852,41 @@ namespace Graceful
             }
         }
 
+        /**
+         * Similar to FirstOrCreate except we do not add the new instance
+         * to the database. We simply return the model you passed in.
+         * It is then on you to call Save() on that model if you wish to
+         * add it to the db.
+         *
+         * ```cs
+         * 	var user = Model.User.FirstOrNew
+         * 	(
+         * 		new Dictionary<string, object>
+         * 		{
+         * 			{"Bar", "abc"}
+         * 		}
+         * 	);
+         * 	user.BirthYear = 2001;
+         * 	user.Save();
+         * ```
+         */
         public static TModel FirstOrNew(Dictionary<string, object> record)
         {
             return FirstOrNew(Hydrate(record));
         }
 
+        /**
+         * Similar to FirstOrCreate except we do not add the new instance
+         * to the database. We simply return the model you passed in.
+         * It is then on you to call Save() on that model if you wish to
+         * add it to the db.
+         *
+         * ```cs
+         * 	var user = Model.User.FirstOrNew("{...JSON...}");
+         * 	user.BirthYear = 2001;
+         * 	user.Save();
+         * ```
+         */
         public static TModel FirstOrNew(string json)
         {
             return FirstOrNew(FromJson(json));
@@ -2791,7 +2916,7 @@ namespace Graceful
         {
             var update = Hydrate(record); update.Hydrated = false;
             var existing = Single(e => e.Id == update.Id, withTrashed: true);
-            return MergeModels(update, existing).Save();
+            return MergeEntities(update, existing).Save();
         }
 
         /**
@@ -2809,7 +2934,31 @@ namespace Graceful
         {
             var update = FromJson(json);
             var existing = Single(e => e.Id == update.Id, withTrashed: true);
-            return MergeModels(update, existing).Save();
+            return MergeEntities(update, existing).Save();
+        }
+
+        /**
+         * Given a List of entities we will loop through each entity, find an
+         * entity from the database with the same Id and then merge the provided
+         * entity into the existing entity, saving the result.
+         *
+         * ```cs
+         * 	Model.Foo.UpdateMany
+         * 	(
+         * 		new List<Foo>
+         * 		{
+         * 			new Foo { Id = 1, Bar = "abc" },
+         * 			new Foo { Id = 2, Bar = "123" }
+         * 		}
+         * 	);
+         * ```
+         */
+        public static void UpdateMany(List<TModel> entities)
+        {
+            entities.ForEach(update =>
+            {
+                MergeEntities(update, Single(e => e.Id == update.Id, withTrashed: true)).Save();
+            });
         }
 
         /**
@@ -2826,10 +2975,7 @@ namespace Graceful
          */
         public static void UpdateMany(string json)
         {
-            FromJsonArray(json).ForEach(update =>
-            {
-                MergeModels(update, Single(e => e.Id == update.Id, withTrashed: true)).Save();
-            });
+            UpdateMany(FromJsonArray(json));
         }
 
         /**
@@ -2857,28 +3003,43 @@ namespace Graceful
             FilterTrashed(withTrashed).UpdateAll(assignments);
         }
 
+        /**
+         * Updates enMasse without first loading the entites into memory.
+         *
+         * ```cs
+         * 	Models.Foo.UpdateAll("e.Bar == \"abc\" && e.Baz == 123");
+         * 	Models.Foo.Where(e => e.Id == 78).UpdateAll("e.Qux == \"qwerty\"");
+         * ```
+         *
+         * __The expression is NOT a "WHERE" predicate:__
+         * The expression you provide this Update method follows the same
+         * structure as a predicate but we parse it slightly diffrently.
+         * Consider each "&&" or "||" as a comma and each "==" simply as a "="
+         * operator.
+         *
+         * __Relationships:__
+         * You can only update primative values, you can not update
+         * relationships using this method.
+         *
+         * > NOTE: Keep in mind this will not trigger any of the entity events.
+         */
         public static void UpdateAll(string assignments, bool withTrashed = false)
         {
             UpdateAll(ExpressionBuilder.BuildAssignmentExpression<TModel>(assignments), withTrashed);
         }
 
         /**
-         * Check to see if model exists, using properties.
+         * Check to see if a similar model exists, using properties.
          * If so lets update it with some new values.
          * If not lets create a brand new record.
          *
-         * @example
+         * ```cs
          * 	var user = Models.User.UpdateOrCreate
          * 	(
          * 		new User { Name = "Brad" },
          * 		new User { Email = "brad@kdis.com.au" }
          * 	);
-         *
-         * @param TModel find The instance to search for in the db.
-         *
-         * @param TModel update The instance with the updated properties.
-         *
-         * @returns TModel The 2 models provided will be merged and returned.
+         * ```
          */
         public static TModel UpdateOrCreate(TModel find, TModel update)
         {
@@ -2893,7 +3054,7 @@ namespace Graceful
             }
             else
             {
-                return MergeModels(update, existing).Save();
+                return MergeEntities(update, existing).Save();
             }
         }
 
@@ -2902,19 +3063,13 @@ namespace Graceful
          * If so lets update it with some new values.
          * If not lets create a brand new record.
          *
-         * @example
+         * ```cs
          * 	var user = Models.User.UpdateOrCreate
          * 	(
          * 		e => e.Id == 1,
          * 		new User { Email = "brad@kdis.com.au" }
          * 	);
-         *
-         * @param Expression find The Linq expression to search the db.
-         *
-         * @param TModel update This instance will be merged with model from
-         *                      the db or it will be created.
-         *
-         * @returns TModel
+         * ```
          */
         public static TModel UpdateOrCreate(Expression<Func<TModel, bool>> find, TModel update)
         {
@@ -2926,21 +3081,7 @@ namespace Graceful
             }
             else
             {
-                return MergeModels(update, existing).Save();
-            }
-        }
-
-        public static TModel MergeOrNew(Expression<Func<TModel, bool>> find, TModel toMerge)
-        {
-            var existing = SingleOrDefault(find);
-
-            if (existing == null)
-            {
-                return toMerge;
-            }
-            else
-            {
-                return MergeModels(toMerge, existing);
+                return MergeEntities(update, existing).Save();
             }
         }
 
@@ -3116,10 +3257,7 @@ namespace Graceful
         {
             if (this.Id == 0)
             {
-                throw new Exception
-                (
-                    "Can't delete an entity that does not exist!"
-                );
+                throw new DeleteNonExistentEntityException(this);
             }
 
             if (!this.FireBeforeDelete(hardDelete)) return;
@@ -3466,14 +3604,12 @@ namespace Graceful
             // Grab our class properties, that represent columns in the table.
             var props = MappedPropsExceptId;
 
-            //bool INSERTING; dont need this anymore it seems.
             if (this.Id == 0)
             {
                 // We are INSERTING
                 // So Update both the created and modified times
                 this.CreatedAt = DateTime.UtcNow;
                 this.ModifiedAt = DateTime.UtcNow;
-                //INSERTING = true;
                 if (!this.FireBeforeInsert()) return null;
             }
             else
@@ -3481,7 +3617,6 @@ namespace Graceful
                 // We are UPDATING
                 // So Update the modified time only.
                 this.ModifiedAt = DateTime.UtcNow;
-                //INSERTING = false;
                 if (!this.FireBeforeUpdate()) return null;
             }
 
@@ -3569,7 +3704,14 @@ namespace Graceful
                     {
                         if (SavedEntities.Contains(value))
                         {
-                            return (int)((dynamic)value).DbRecord["Id"];
+                            if (((dynamic)value).DbRecord == null)
+                            {
+                                return (int)((dynamic)value).PropertyBag["Id"];
+                            }
+                            else
+                            {
+                                return (int)((dynamic)value).DbRecord["Id"];
+                            }
                         }
                         else
                         {
@@ -3661,7 +3803,7 @@ namespace Graceful
                     case RelationType.MtoM:
                     {
                         var currentEntities = (value as IEnumerable<object>).Cast<IModel<Model>>().ToList();
-                        var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();//(List<IModel<Model>>)this.OriginalPropertyBag[relation.LocalProperty.Name];
+                        var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();
 
                         currentEntities.ForEach(e =>
                         {
@@ -3737,24 +3879,10 @@ namespace Graceful
                             }
 
                             e.Save(SavedEntities);
-
-                            // In theroy this case should never happen again now
-                            // that we force both sides of the relationship to
-                            // be defined.
-                            /*if (relation.ForeignProperty == null)
-                            {
-                                Db.Qb.UPDATE(relation.ForeignKeyTableName)
-                                .SET(relation.ForeignKeyColumnName, this.Id)
-                                .WHERE("Id", e.Id).Execute();
-                            }*/
                         });
 
-                        //var originalEntities = (List<IModel<Model>>)
-                        //this.OriginalPropertyBag[relation.LocalProperty.Name];
-
-                        var originalEntities = (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>).Cast<IModel<Model>>().ToList();
-
-                        originalEntities.ForEach(originalEntity =>
+                        (this.OriginalPropertyBag[relation.LocalProperty.Name] as IEnumerable<object>)
+                        .Cast<IModel<Model>>().ToList().ForEach(originalEntity =>
                         {
                             if (!currentEntities.Contains(originalEntity))
                             {
@@ -3809,22 +3937,138 @@ namespace Graceful
                 }
             });
 
-            // this.Hydrated = true; okay i think this buggers some other stuff up
-
             this.FireAfterSave();
 
             return (TModel)this;
         }
 
         /**
-         * A private helper method to merge 2 entities together.
-         * We use this in the UpdateOrCreate methods.
+         * Given 2 entities, an updated and an existing we merge them together.
+         *
+         * This method is smart enough to recurse into the object graph,
+         * assuming an updated entity has a valid Id set, this method will
+         * lookup the corresponding entity from the database and continue the
+         * merge process.
+         *
+         * ```cs
+         * 	var intial = new Foo
+         * 	{
+         * 		Bar = "abc",
+         * 		Baz = new Baz
+         * 		{
+         * 			Qux = 123,
+         * 			FooBar = "acme"
+         * 		},
+         * 		FuBar = "xyz"
+         * 	}.Save();
+         *
+         * 	var updated = new Foo
+         * 	{
+         * 		Bar = "cba",
+         * 		Baz = new Baz
+         * 		{
+         * 			Id = 1,
+         * 			Qux = 456
+         * 		}
+         * 	};
+         *
+         * 	var merged = Foo.MergeEntities(updated, Foo.Find(1));
+         * ```
+         *
+         * The merged result might look something like:
+         * ```json
+         * 	{
+         * 		"Id": 1,
+         * 		"Bar": "cba",
+         * 		"Baz":
+         * 		{
+         * 			"Id": 1,
+         * 			"Qux": 456,
+         * 			"FooBar": "acme"
+         * 		},
+         * 		"FuBar": "xyz"
+         * 	}
+         * ```
+         *
+         * However consider the following example:
+         * ```cs
+         * 	var intial = new Foo
+         * 	{
+         * 		Bar = "abc",
+         * 		Baz = new Baz
+         * 		{
+         * 			Qux = 123,
+         * 			FooBar = "acme"
+         * 		},
+         * 		FuBar = "xyz"
+         * 	}.Save();
+         *
+         * 	var updated = new Foo
+         * 	{
+         * 		Bar = "cba",
+         * 		Baz = new Baz
+         * 		{
+         * 			Qux = 456
+         * 		}
+         * 	};
+         *
+         * 	var merged = Foo.MergeEntities(updated, Foo.Find(1));
+         * ```
+         *
+         * The merged result now looks something like:
+         * ```json
+         * 	{
+         * 		"Id": 1,
+         * 		"Bar": "cba",
+         * 		"Baz":
+         * 		{
+         * 			"Id": 0,
+         * 			"Qux": 456,
+         * 			"FooBar": null
+         * 		},
+         * 		"FuBar": "xyz"
+         * 	}
+         * ```
+         *
+         * Notice how the instance of Baz got replaced.
+         * This is because we omitted the Id property on the Baz instance.
+         *
+         * Similar logic is used when dealing with lists of entities,
+         * except that we _"Add"_ to the list instead of replace.
+         *
+         * > NOTE: Remember that at this point the merged result is only in
+         * > memory, if you are happy with it you would then need to Save it.
          */
-        public static TModel MergeModels(TModel updated, TModel existing, List<object> MergedEntities = null)
+        public static TModel MergeEntities(TModel updated, TModel existing, List<object> Updated = null, List<object> Merged = null)
         {
-            if (MergedEntities == null) MergedEntities = new List<object>();
-            if (MergedEntities.Contains(updated) || MergedEntities.Contains(existing)) return existing;
-            MergedEntities.Add(updated); MergedEntities.Add(existing);
+            // If the existing entity is null we have nothing to merge.
+            if (existing == null) return updated;
+
+            // Setup our lists to keep track of what we have merged.
+            if (Updated == null) Updated = new List<object>();
+            if (Merged == null) Merged = new List<object>();
+
+            // Check to see if we have already merged this updated entity.
+            // We must enforce a reference check, we can not just use Contains.
+            if (Updated.Any(previous => ReferenceEquals(previous, updated)))
+            {
+                return null;
+            }
+            else
+            {
+                Updated.Add(updated);
+            }
+
+            // If we have already come across this existing entity,
+            // we need to merge the new updates into it.
+            if (Merged.Contains(existing))
+            {
+                existing = (TModel)Merged[Merged.IndexOf(existing)];
+            }
+            else
+            {
+                Merged.Add(existing);
+            }
 
             MappedPropsExceptId.ForEach(p =>
             {
@@ -3841,35 +4085,101 @@ namespace Graceful
                     p.SetValue(existing, p.GetValue(updated));
                 }
 
-                // Merge the entity but only if it has an Id.
+                // Deal with singular entities, ie: OtoX relationships.
                 else if (TypeMapper.IsEntity(p.PropertyType))
                 {
                     var dModel = Dynamic(p.PropertyType);
                     var updatedEntity = p.GetValue(updated);
-                    var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
+                    var existingEntity = p.GetValue(existing);
 
-                    if (updatedEntityId > 0)
+                    if (((IModel<Model>)updatedEntity).Id > 0)
                     {
-                        var existingEntity = dModel.Find(updatedEntityId);
+                        // Merge the entity but only if it has an Id.
+                        // Without a valid Id we have no way to be certian
+                        // we are merging the same entities.
+                        var mergedEntity = dModel.InvokeStatic
+                        (
+                            "MergeEntities",
+                            updatedEntity,
+                            existingEntity,
+                            Updated,
+                            Merged
+                        );
 
-                        if (existingEntity != null)
+                        if (mergedEntity != null)
                         {
-                            var mergedEntity = dModel.InvokeStatic
-                            (
-                                "MergeModels", updatedEntity, existingEntity, MergedEntities
-                            );
-
                             p.SetValue(existing, mergedEntity);
                         }
                     }
+                    else
+                    {
+                        // If the entity does not have an Id we take that to
+                        // mean we are replacing the value in the database.
+                        p.SetValue(existing, updatedEntity);
+                    }
                 }
 
-                // Merge the entities but again only if they have Id's.
+                // Deal with lists of entities, ie: MtoX relationships.
                 else if (TypeMapper.IsListOfEntities(p.PropertyType))
                 {
                     var dModel = Dynamic(p.PropertyType.GenericTypeArguments[0]);
                     var updatedEntities = p.GetValue(updated) as IEnumerable<object>;
-                    dynamic mergedEntities = Activator.CreateInstance
+                    var existingEntities = p.GetValue(existing) as IEnumerable<object>;
+                    var mergedEntities = new List<object>();
+
+                    // This is basically the same as the singular case above,
+                    // we are just adding the results a list instead.
+                    foreach (var updatedEntity in updatedEntities)
+                    {
+                        var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
+
+                        if (updatedEntityId > 0)
+                        {
+                            var mergedEntity = dModel.InvokeStatic
+                            (
+                                "MergeEntities",
+                                updatedEntity,
+                                existingEntities.SingleOrDefault
+                                (
+                                    e => ((IModel<Model>)e).Id == updatedEntityId
+                                ),
+                                Updated,
+                                Merged
+                            );
+
+                            if (mergedEntity != null)
+                            {
+                                mergedEntities.Add(mergedEntity);
+                            }
+                        }
+                        else
+                        {
+                            if (updatedEntity != null)
+                            {
+                                mergedEntities.Add((dynamic)updatedEntity);
+                            }
+                        }
+                    }
+
+                    // Now we need to re-add any entities that didn't get merged
+                    foreach (var existingEntity in existingEntities)
+                    {
+                        var existingEntityId = ((IModel<Model>)existingEntity).Id;
+
+                        if (existingEntityId > 0)
+                        {
+                            if (!mergedEntities.Any(me => ((IModel<Model>)me).Id == existingEntityId))
+                            {
+                                mergedEntities.Add((dynamic)existingEntity);
+                            }
+                        }
+                        else
+                        {
+                            mergedEntities.Add((dynamic)existingEntity);
+                        }
+                    }
+
+                    dynamic mergedEntitiesList = Activator.CreateInstance
                     (
                         typeof(List<>).MakeGenericType
                         (
@@ -3877,38 +4187,66 @@ namespace Graceful
                         )
                     );
 
-                    foreach (var updatedEntity in updatedEntities)
+                    foreach (var me in mergedEntities.Distinct())
                     {
-                        var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
-
-                        if (updatedEntityId > 0)
-                        {
-                            var existingEntity = dModel.Find(updatedEntityId);
-
-                            if (existingEntity != null)
-                            {
-                                var mergedEntity = dModel.InvokeStatic
-                                (
-                                    "MergeModels", updatedEntity, existingEntity, MergedEntities
-                                );
-
-                                mergedEntities.Add(mergedEntity);
-                            }
-                        }
-                        else
-                        {
-                            mergedEntities.Add((dynamic)updatedEntity);
-                        }
+                        mergedEntitiesList.Add((dynamic)me);
                     }
 
-                    p.SetValue(existing, mergedEntities);
+                    p.SetValue(existing, mergedEntitiesList);
                 }
             });
 
             return existing;
         }
+
+        /**
+         * Merges the entity based on some other value other than Id.
+         *
+         * ```cs
+         * 	var foo = new Foo();
+         *
+         * 	foo.Bars.Add
+         * 	(
+         * 		Bar.MergeOrNew
+         * 		(
+         * 			e => e.Baz == "abc",
+         * 			new Bar
+         * 			{
+         * 				Baz = "abc",
+         * 				Qux = 123
+         * 			}
+         * 		)
+         * 	);
+         *
+         * 	foo.Save();
+         * ```
+         *
+         * > NOTE: You might also consider SingleOrNew or even FirstOrNew
+         * > in such a situation.
+         */
+        public static TModel MergeOrNew(Expression<Func<TModel, bool>> find, TModel toMerge)
+        {
+            var existing = SingleOrDefault(find);
+
+            if (existing == null)
+            {
+                return toMerge;
+            }
+            else
+            {
+                return MergeEntities(toMerge, existing);
+            }
+        }
     }
 
+    /**
+     * Covariant Generic Interface
+     *
+     * This allows us to cast, instead of using Reflection.
+     * Which obviously is much, much faster.
+     *
+     * @see: http://stackoverflow.com/questions/16795750
+     */
     public interface IModel<out TModel> where TModel : Model
     {
         event PropertyChangedEventHandler PropertyChanged;

@@ -3,6 +3,31 @@
   "version": -9996,
   "targets": {
     "DNX,Version=v4.5.1": {
+      "Graceful/0.0.33": {
+        "dependencies": {
+          "Inflector": "1.0.0.0",
+          "Newtonsoft.Json": "7.0.1",
+          "Newtonsoft.Json.Schema": "1.0.10",
+          "System.Linq.Dynamic": "1.0.4"
+        },
+        "frameworkAssemblies": [
+          "System.Xml",
+          "System.Web",
+          "System.Data",
+          "System.Configuration",
+          "System.ComponentModel.DataAnnotations",
+          "mscorlib",
+          "System",
+          "System.Core",
+          "Microsoft.CSharp"
+        ],
+        "compile": {
+          "lib/dnx451/Graceful.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Graceful.dll": {}
+        }
+      },
       "Inflector/1.0.0.0": {
         "compile": {
           "lib/net45/Inflector.dll": {}
@@ -41,6 +66,16 @@
     }
   },
   "libraries": {
+    "Graceful/0.0.33": {
+      "sha512": "qqISKpxNZT/KYEZxBRoZLhbJHlUwbkDjc7hoetTrVswsJ3leHcjNHJvbigf9+wgoMV0GQUHazVYIcl2KynHiew==",
+      "files": [
+        "Graceful.0.0.33.nupkg",
+        "Graceful.0.0.33.nupkg.sha512",
+        "Graceful.nuspec",
+        "lib/dnx451/Graceful.dll",
+        "lib/dnx451/Graceful.xml"
+      ]
+    },
     "Inflector/1.0.0.0": {
       "sha512": "sTHSvP1KMbAM2jTjqo02zn4nkMd3Mfj76H9Ikyko9bmO6BHblkIQOKIwJwQSKurgpiczBlcirWnbFM/n/8XiiQ==",
       "files": [
