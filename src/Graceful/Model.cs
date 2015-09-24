@@ -4255,6 +4255,7 @@ namespace Graceful
         List<PropertyInfo> ModifiedProps { get; }
         Dictionary<string, object> DbRecord { get; }
         List<object> DiscoveredEntities { get; set; }
+        bool Hydrated { get; }
         Dictionary<string, List<Dictionary<string, object>>> CachedQueries { get; set; }
         T Get<T>([CallerMemberName] string propName = "", bool loadFromDiscovered = true, bool loadFromDb = true);
         void Set<T>(T value, [CallerMemberName] string propName = "", bool triggerChangeEvent = true);
