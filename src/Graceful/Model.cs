@@ -4050,8 +4050,12 @@ namespace Graceful
 
             // Check to see if we have already merged this updated entity.
             // We must enforce a reference check, we can not just use Contains.
+            // Consider that an entity has 2 lists of the same entity type.
+            // It is possible that there might be 2 seperate updated entity
+            // instances, one for each list.
             if (Updated.Any(previous => ReferenceEquals(previous, updated)))
             {
+                // Stop the recursion.
                 return null;
             }
             else
@@ -4070,16 +4074,14 @@ namespace Graceful
                 Merged.Add(existing);
             }
 
-            MappedPropsExceptId.ForEach(p =>
+            // We only need to merge the properties of the
+            // updated entity that have actually changed.
+            updated.ModifiedProps.ForEach(p =>
             {
                 // Never copy the CreatedAt, ModifiedAt timestamps.
                 if (p.Name == "CreatedAt" || p.Name == "ModifiedAt") return;
 
-                // If the updated entity has a null value, we will skip to the
-                // next property and leave the existing property value as is.
-                if (updated.Get<object>(p.Name) == null) return;
-
-                // Copy the property value, if simple primative.
+                // Copy the property value, if it is a simple primative.
                 if (TypeMapper.IsClrType(p.PropertyType))
                 {
                     p.SetValue(existing, p.GetValue(updated));
@@ -4090,10 +4092,20 @@ namespace Graceful
                 {
                     var dModel = Dynamic(p.PropertyType);
                     var updatedEntity = p.GetValue(updated);
+                    var updateEntityCasted = (IModel<Model>)updatedEntity;
                     var existingEntity = p.GetValue(existing);
 
-                    if (((IModel<Model>)updatedEntity).Id > 0)
+                    if (updateEntityCasted.Id > 0)
                     {
+                        // If the updated entity has come from the db and has
+                        // not been modified. ie: is exactly the same as the
+                        // existingEntity. Then we having nothing to do, we will
+                        // skip to the next property.
+                        if (updateEntityCasted.Hydrated && updateEntityCasted.ModifiedProps.Count == 0)
+                        {
+                            return;
+                        }
+
                         // Merge the entity but only if it has an Id.
                         // Without a valid Id we have no way to be certian
                         // we are merging the same entities.
@@ -4131,10 +4143,20 @@ namespace Graceful
                     // we are just adding the results a list instead.
                     foreach (var updatedEntity in updatedEntities)
                     {
-                        var updatedEntityId = ((IModel<Model>)updatedEntity).Id;
+                        var updateEntityCasted = (IModel<Model>)updatedEntity;
+                        var updatedEntityId = updateEntityCasted.Id;
 
                         if (updatedEntityId > 0)
                         {
+                            // If the updated entity has come from the db and
+                            // has not been modified. ie: is exactly the same as
+                            // the existingEntity. Then we having nothing to do,
+                            // we will skip to the next property.
+                            if (updateEntityCasted.Hydrated && updateEntityCasted.ModifiedProps.Count == 0)
+                            {
+                                return;
+                            }
+
                             var mergedEntity = dModel.InvokeStatic
                             (
                                 "MergeEntities",
