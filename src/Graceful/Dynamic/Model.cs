@@ -184,14 +184,14 @@ namespace Graceful.Dynamic
             this.Instance.Set<T>(value, propName, triggerChangeEvent);
         }
 
-        public dynamic Hydrate(Dictionary<string, object> record)
+        public dynamic Hydrate(Dictionary<string, object> record, bool fromUser = false)
         {
-            return this.InvokeStatic("Hydrate", record);
+            return this.InvokeStatic("Hydrate", record, fromUser);
         }
 
-        public dynamic Hydrate(List<Dictionary<string, object>> records)
+        public dynamic Hydrate(List<Dictionary<string, object>> records, bool fromUser = false)
         {
-            return this.InvokeStatic("Hydrate", records);
+            return this.InvokeStatic("Hydrate", records, fromUser);
         }
 
         public dynamic FilterTrashed(bool withTrashed = false)

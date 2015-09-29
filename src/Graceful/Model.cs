@@ -1822,7 +1822,7 @@ namespace Graceful
          * 	);
          * ```
          */
-        public static TModel Hydrate(Dictionary<string, object> record)
+        public static TModel Hydrate(Dictionary<string, object> record, bool fromUser = false)
         {
             // Make sure we have some data to actually hydrate the entity with.
             if (record.Count == 0)
@@ -1833,21 +1833,24 @@ namespace Graceful
             // Create the new entity
             var entity = new TModel();
 
-            entity.Hydrated = true;
+            if (!fromUser)
+            {
+                entity.Hydrated = true;
 
-            // Save the record to the entity.
-            // We do this so that we may quickly look up any
-            // foreign keys when and if the time comes.
-            entity.DbRecord = record;
+                // Save the record to the entity.
+                // We do this so that we may quickly look up any
+                // foreign keys when and if the time comes.
+                entity.DbRecord = record;
+            }
 
             // Hydrate all primative types.
-            foreach(var col in entity.DbRecord)
+            foreach(var col in record)
             {
                 if (col.Value == null) continue;
 
                 if (typeof(TModel).GetProperty(col.Key) != null)
                 {
-                    entity.Set(col.Value, col.Key, triggerChangeEvent: false);
+                    entity.Set(col.Value, col.Key, triggerChangeEvent: fromUser);
                 }
             }
 
@@ -1873,11 +1876,11 @@ namespace Graceful
          * 	);
          * ```
          */
-        public static List<TModel> Hydrate(List<Dictionary<string, object>> records)
+        public static List<TModel> Hydrate(List<Dictionary<string, object>> records, bool fromUser = false)
         {
             var entities = new List<TModel>();
 
-            records.ForEach(record => entities.Add(Hydrate(record)));
+            records.ForEach(record => entities.Add(Hydrate(record, fromUser)));
 
             return entities;
         }
@@ -2914,7 +2917,7 @@ namespace Graceful
          */
         public static TModel Update(Dictionary<string, object> record)
         {
-            var update = Hydrate(record); update.Hydrated = false;
+            var update = Hydrate(record, fromUser: true);
             var existing = Single(e => e.Id == update.Id, withTrashed: true);
             return MergeEntities(update, existing).Save();
         }
