@@ -734,7 +734,7 @@ namespace Graceful.Query
         {
             return this.OrderBy
             (
-                ExpressionBuilder.BuildAssignmentExpression<TModel>(predicate),
+                ExpressionBuilder.BuildPropertySelectExpression<TModel>(predicate),
                 direction
             );
         }
@@ -862,7 +862,7 @@ namespace Graceful.Query
          * > we parse it slightly diffrently. Consider each "&&" or "||" as a
          * > comma. And each "==" simply as a "=" operator.
          */
-        public void UpdateAll(Expression<Func<TModel, object>> assignments)
+        public void UpdateAll(Expression<Func<TModel, bool>> assignments)
         {
             var converter = new AssignmentsConverter();
             converter.Visit(assignments.Body);
@@ -885,7 +885,7 @@ namespace Graceful.Query
         {
             this.UpdateAll
             (
-                ExpressionBuilder.BuildAssignmentExpression<TModel>(assignments)
+                ExpressionBuilder.BuildPredicateExpression<TModel>(assignments)
             );
         }
 

@@ -2994,7 +2994,7 @@ namespace Graceful
          *
          * > NOTE: Keep in mind this will not trigger any of the entity events.
          */
-        public static void UpdateAll(Expression<Func<TModel, object>> assignments, bool withTrashed = false)
+        public static void UpdateAll(Expression<Func<TModel, bool>> assignments, bool withTrashed = false)
         {
             FilterTrashed(withTrashed).UpdateAll(assignments);
         }
@@ -3021,7 +3021,7 @@ namespace Graceful
          */
         public static void UpdateAll(string assignments, bool withTrashed = false)
         {
-            UpdateAll(ExpressionBuilder.BuildAssignmentExpression<TModel>(assignments), withTrashed);
+            UpdateAll(ExpressionBuilder.BuildPredicateExpression<TModel>(assignments), withTrashed);
         }
 
         /**
