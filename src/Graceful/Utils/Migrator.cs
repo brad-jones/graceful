@@ -18,6 +18,7 @@ namespace Graceful.Utils
     using System.Data;
     using Graceful.Query;
     using System.Reflection;
+    using Graceful.Extensions;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
 

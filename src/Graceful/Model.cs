@@ -20,6 +20,7 @@ namespace Graceful
     using Graceful.Utils;
     using Newtonsoft.Json;
     using System.Reflection;
+    using Graceful.Extensions;
     using Newtonsoft.Json.Linq;
     using System.ComponentModel;
     using Newtonsoft.Json.Schema;
@@ -36,7 +37,7 @@ namespace Graceful
         /**
          * Cache the results of GetAllModels.
          */
-        private static List<Type> _AllModels;
+        private static HashSet<Type> _AllModels;
 
         /**
          * Returns a list of all defined models in the current app domain.
@@ -45,11 +46,11 @@ namespace Graceful
          * 	var models = Model.GetAllModels();
          * ```
          */
-        public static List<Type> GetAllModels()
+        public static HashSet<Type> GetAllModels()
         {
             if (_AllModels != null) return _AllModels;
 
-            _AllModels = new List<Type>();
+            _AllModels = new HashSet<Type>();
 
             AppDomain.CurrentDomain.GetAssemblies().ToList().ForEach(assembly =>
             {

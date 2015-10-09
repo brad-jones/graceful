@@ -16,6 +16,7 @@ namespace Graceful.Utils
     using Inflector;
     using System.Linq;
     using System.Reflection;
+    using Graceful.Extensions;
     using System.Collections.Generic;
 
     public class RelationshipDiscoverer
@@ -141,7 +142,7 @@ namespace Graceful.Utils
         /**
          * RelationshipDiscoverer Constructor
          */
-        public RelationshipDiscoverer(List<Type> Models)
+        public RelationshipDiscoverer(HashSet<Type> Models)
         {
             this.Discovered = new List<Relation>();
 

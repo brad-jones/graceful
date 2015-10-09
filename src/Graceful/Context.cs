@@ -14,9 +14,11 @@ namespace Graceful
 {
     using System;
     using System.IO;
+    using System.Linq;
     using Graceful.Utils;
     using Newtonsoft.Json;
     using System.Reflection;
+    using Graceful.Extensions;
     using System.Data.SqlClient;
     using System.Collections.Generic;
 
@@ -176,7 +178,7 @@ namespace Graceful
         /**
          * Cache the Models Property.
          */
-        protected List<Type> _Models;
+        protected HashSet<Type> _Models;
 
         /**
          * Returns a list of all defined models in the current context.
@@ -186,14 +188,14 @@ namespace Graceful
          * > will be included in this list if the Connection String of this
          * > Context does not match any of the ConnectionAttribute's.
          */
-        public List<Type> Models
+        public HashSet<Type> Models
         {
             get
             {
                 if (this._Models == null)
                 {
-                    var globalModels = new List<Type>();
-                    var customModels = new List<Type>();
+                    var globalModels = new HashSet<Type>();
+                    var customModels = new HashSet<Type>();
 
                     Model.GetAllModels().ForEach(model =>
                     {
