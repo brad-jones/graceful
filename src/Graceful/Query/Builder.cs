@@ -346,8 +346,12 @@ namespace Graceful.Query
                 // clause is, so append a seperator.
                 if (this.CurrentSeperator != null)
                 {
-                    this.Buffer.Append(this.CurrentSeperator);
-                    this.Buffer.Append(" ");
+                    // Only append the seperator if we have a previous section to the clause.
+                    if (!this.Buffer.ToString().EndsWith(this.CurrentClause + " "))
+                    {
+                        this.Buffer.Append(this.CurrentSeperator);
+                        this.Buffer.Append(" ");
+                    }
                 }
                 else
                 {
