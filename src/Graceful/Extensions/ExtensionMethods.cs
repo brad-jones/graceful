@@ -21,12 +21,11 @@ namespace Graceful.Extensions
     public static class ExtensionMethods
     {
         /**
-         * Give IList's a ForEach method.
-         * For some reason they don't get one from System.Linq
+         * Give any Enumerable a ForEach Method.
          */
-        public static void ForEach<T>(this IList<T> list, Action<T> handler)
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Action<T> handler)
         {
-            foreach (T value in list)
+            foreach (T value in enumerable)
             {
                 handler(value);
             }
