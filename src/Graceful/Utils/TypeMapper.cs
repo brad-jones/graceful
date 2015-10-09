@@ -402,9 +402,10 @@ namespace Graceful.Utils
          *  }
          * ```
          */
-        public static bool IsNullable(object value)
+        public static bool IsNullable<T>(T value)
         {
-            return IsNullable(value.GetType());
+            if (value == null) return true;
+            return IsNullable(typeof(T));
         }
 
         /**
