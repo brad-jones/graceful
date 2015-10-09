@@ -50,13 +50,13 @@ namespace Graceful.Extensions
          * 	});
          * ```
          */
-        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<T, bool?> handler)
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<T, bool> handler)
         {
             foreach (T value in enumerable)
             {
                 var result = handler(value);
 
-                if (result.HasValue && result.Value == false)
+                if (result == false)
                 {
                     break;
                 }
@@ -104,14 +104,14 @@ namespace Graceful.Extensions
          * 	});
          * ```
          */
-        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<int, T, bool?> handler)
+        public static void ForEach<T>(this IEnumerable<T> enumerable, Func<int, T, bool> handler)
         {
             int key = 0;
             foreach (T value in enumerable)
             {
                 var result = handler(key++, value);
 
-                if (result.HasValue && result.Value == false)
+                if (result == false)
                 {
                     break;
                 }
