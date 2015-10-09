@@ -1014,14 +1014,6 @@ namespace Graceful
         }
 
         /**
-         * Returns a string representation of the current entity.
-         */
-        public override string ToString()
-        {
-            return this.ToJson();
-        }
-
-        /**
          * Determines whether the input object is equal to the current entity.
          *
          * > NOTE: If either entity has an Id of 0 then a reference equality
