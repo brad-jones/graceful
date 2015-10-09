@@ -49,7 +49,7 @@ namespace Graceful.Dynamic
         }
 
         /**
-         * Given a string, we create an Expression, to be used for assignments.
+         * Create an Expression, to be used for property selection.
          *
          * ```cs
          * 	using Graceful.Dynamic;
@@ -58,16 +58,19 @@ namespace Graceful.Dynamic
          * 		e => e.CreatedAt;
          *
          * 	Expression<Func<T, object>> builtExpression =
-         * 		ExpressionBuilder.BuildPredicateExpression<Foo>("e.CreatedAt");
+         * 		ExpressionBuilder.BuildPropertySelectExpression<Foo>
+         * 		(
+         * 			"e.CreatedAt"
+         * 		);
          *
          * 	// compliedExpression == builtExpression
          *
          * 	Foo.Where(e => e.Bar == "Baz").OrderBy(builtExpression).ToList();
          * ```
          *
-         * > NOTE: Use the term assignment losely...
+         * > NOTE: You must always use the parameter of _"e"_.
          */
-        public static Expression<Func<T, object>> BuildAssignmentExpression<T>(string expression)
+        public static Expression<Func<T, object>> BuildPropertySelectExpression<T>(string expression)
         {
             return (Expression<Func<T, object>>)DynamicExpression.ParseLambda
             (

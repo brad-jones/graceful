@@ -2426,7 +2426,7 @@ namespace Graceful
          */
         public static Linq<TModel> OrderBy(string predicate, OrderDirection direction = OrderDirection.ASC, bool withTrashed = false)
         {
-            return OrderBy(ExpressionBuilder.BuildAssignmentExpression<TModel>(predicate), direction, withTrashed);
+            return OrderBy(ExpressionBuilder.BuildPropertySelectExpression<TModel>(predicate), direction, withTrashed);
         }
 
         /**
