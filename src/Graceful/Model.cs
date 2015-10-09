@@ -3764,12 +3764,20 @@ namespace Graceful
                     )
                     .WHERE("Id", this.Id)
                     .Execute();
-
+                    
                     // Update the existing db record
-                    record.ToList().ForEach(item =>
+                    if (this.DbRecord == null)
                     {
-                        this.DbRecord[item.Key] = item.Value;
-                    });
+                        this.DbRecord = record;
+                        this.DbRecord["Id"] = this.Id;
+                    }
+                    else
+                    {
+                        record.ToList().ForEach(item =>
+                        {
+                            this.DbRecord[item.Key] = item.Value;
+                        });
+                    }
 
                     this.FireAfterUpdate();
                 }
