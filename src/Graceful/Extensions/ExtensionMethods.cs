@@ -25,6 +25,8 @@ namespace Graceful.Extensions
          */
         public static void ForEach<T>(this IEnumerable<T> enumerable, Action<T> handler)
         {
+            if (enumerable == null) return;
+
             foreach (T value in enumerable)
             {
                 handler(value);
@@ -51,6 +53,8 @@ namespace Graceful.Extensions
          */
         public static void ForEach<T>(this IEnumerable<T> enumerable, Func<T, bool> handler)
         {
+            if (enumerable == null) return;
+
             foreach (T value in enumerable)
             {
                 var result = handler(value);
@@ -78,6 +82,8 @@ namespace Graceful.Extensions
          */
         public static void ForEach<T>(this IEnumerable<T> enumerable, Action<int, T> handler)
         {
+            if (enumerable == null) return;
+
             int key = 0;
             foreach (T value in enumerable)
             {
@@ -105,6 +111,8 @@ namespace Graceful.Extensions
          */
         public static void ForEach<T>(this IEnumerable<T> enumerable, Func<int, T, bool> handler)
         {
+            if (enumerable == null) return;
+            
             int key = 0;
             foreach (T value in enumerable)
             {
