@@ -3335,6 +3335,14 @@ namespace Graceful
                 );
             }
 
+            // If we have a valid Id and the only other property that has
+            // been modified is the ModifiedAt timestamp then we can skip
+            // the validation.
+            if (this.Id > 0 && this.ModifiedProps.Count == 2 && this.ModifiedProps[0].Name == "Id" && this.ModifiedProps[1].Name == "ModifiedAt")
+            {
+                return true;
+            }
+
             MappedPropsExceptId.ForEach(prop =>
             {
                 // Required Check
@@ -3763,7 +3771,7 @@ namespace Graceful
                     )
                     .WHERE("Id", this.Id)
                     .Execute();
-                    
+
                     // Update the existing db record
                     if (this.DbRecord == null)
                     {
@@ -3910,7 +3918,7 @@ namespace Graceful
                 }
             });
 
-            this.Id = (int)this.DbRecord["Id"];
+            if (this.DbRecord != null) this.Id = (int)this.DbRecord["Id"];
 
             // We have saved everything, so lets reset this list.
             this.ModifiedProps.Clear();
