@@ -3564,7 +3564,6 @@ namespace Graceful
 
             if (errors.Count > 0)
             {
-                Console.WriteLine(JArray.FromObject(errors));
                 throw new ValidationException(errors);
             }
 
