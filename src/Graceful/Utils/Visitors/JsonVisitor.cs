@@ -16,7 +16,7 @@ namespace Graceful.Utils.Visitors
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
 
-    abstract class JsonVisitor
+    abstract public class JsonVisitor
     {
         public virtual JToken Visit(JToken token)
         {
