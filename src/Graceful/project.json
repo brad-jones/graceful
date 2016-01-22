@@ -1,5 +1,5 @@
 {
-  "version": "0.0.40",
+  "version": "0.0.41",
   "authors": [
     "Brad Jones"
   ],
@@ -20,6 +20,24 @@
     "System.Linq.Dynamic": "1.0.4"
   },
   "frameworks": {
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Xml": "4.0",
+        "System.Web": "4.0",
+        "System.Data": "4.0",
+        "System.Configuration": "4.0",
+        "System.ComponentModel.DataAnnotations": "4.0"
+      }
+    },
+    "net46": {
+      "frameworkAssemblies": {
+        "System.Xml": "4.0",
+        "System.Web": "4.0",
+        "System.Data": "4.0",
+        "System.Configuration": "4.0",
+        "System.ComponentModel.DataAnnotations": "4.0"
+      }
+    },
     "dnx451": {
       "frameworkAssemblies": {
         "System.Xml": "4.0",

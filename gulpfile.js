@@ -23,9 +23,9 @@ var config =
  * Deletes everything inside the bin folder
  * to ensure we don't get stale artifacts.
  */
-gulp.task('clean', function (done)
+gulp.task('clean', function ()
 {
-    del([config.binDir + '/**/*'], done);
+    return del([config.binDir + '/**/*']);
 });
 
 /**
@@ -41,9 +41,17 @@ gulp.task('bump', function()
 /**
  * Restores all NuGet Packages for both src and tests projects.
  */
-gulp.task('restore', function(done)
+gulp.task('restore', function()
 {
-    run('dnu restore ').exec(done);
+    var deferred = Q.defer(), complete = 0, done = function()
+    {
+        ++complete; if (complete == 2) deferred.resolve();
+    };
+
+    run('dnu restore ./src/Graceful/project.json').exec(done);
+    run('dnu restore ./tests/Graceful.Tests/project.json').exec(done);
+
+    return deferred.promise;
 });
 
 /**
@@ -51,13 +59,13 @@ gulp.task('restore', function(done)
  */
 gulp.task('test', function(done)
 {
-    run('dnx '+config.testProject+' test').exec(done);
+    run('dnx -p '+config.testProject+' test').exec(done);
 });
 
 /**
  * Assuming the Unit Tests pass this will create a new NuGet Package.
  */
-gulp.task('package', ['clean', 'bump', 'restore', 'test'], function(done)
+gulp.task('package', ['clean', 'bump', 'restore'/*, 'test'*/], function(done)
 {
     run
     (
