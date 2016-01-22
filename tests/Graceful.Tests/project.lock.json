@@ -3,7 +3,7 @@
   "version": 2,
   "targets": {
     "DNX,Version=v4.5.1": {
-      "Graceful/0.0.41": {
+      "Graceful/0.0.42": {
         "type": "project",
         "framework": "DNX,Version=v4.5.1",
         "dependencies": {
@@ -291,7 +291,7 @@
       }
     },
     "DNX,Version=v4.5.1/win7-x86": {
-      "Graceful/0.0.41": {
+      "Graceful/0.0.42": {
         "type": "project",
         "framework": "DNX,Version=v4.5.1",
         "dependencies": {
@@ -579,7 +579,7 @@
       }
     },
     "DNX,Version=v4.5.1/win7-x64": {
-      "Graceful/0.0.41": {
+      "Graceful/0.0.42": {
         "type": "project",
         "framework": "DNX,Version=v4.5.1",
         "dependencies": {
@@ -868,7 +868,7 @@
     }
   },
   "libraries": {
-    "Graceful/0.0.41": {
+    "Graceful/0.0.42": {
       "type": "project",
       "path": "../../src/Graceful/project.json"
     },
