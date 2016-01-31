@@ -1,6 +1,7 @@
 // Import some modules
 var
     Q = require('q'),
+    path = require('path'),
     fs = require('fs'),
     del = require('del'),
     gulp = require('gulp'),
@@ -69,9 +70,9 @@ gulp.task('package', ['clean', 'bump', 'restore'/*, 'test'*/], function(done)
 {
     run
     (
-        'dnu pack '+config.srcProject+
+        'dnu pack '+path.normalize(config.srcProject)+
         ' --configuration Release '+
-        '--out '+config.binDir
+        '--out '+path.normalize(config.binDir)
     ).exec(done);
 });
 
